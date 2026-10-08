@@ -7,6 +7,10 @@ import {
   FeedStatus,
   CreateOrderPayload,
   ChargesBreakdown,
+  CandleHistoryResponse,
+  MarginCheckRequest,
+  MarginCheckResponse,
+  OrderPlacementResponse,
 } from "./types";
 
 // Base API route proxied by Next.js rewrites to http://localhost:8000
@@ -42,7 +46,7 @@ export const api = {
     fetchJson<Order[]>(`/api/v1/orders?account_id=${accountId}`),
 
   createOrder: (payload: CreateOrderPayload) =>
-    fetchJson<Order>("/api/v1/orders", {
+    fetchJson<OrderPlacementResponse>("/api/v1/orders", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -77,6 +81,11 @@ export const api = {
   getMarketDepth: (symbol: string) =>
     fetchJson<MarketDepth>(`/api/v1/market/depth/${symbol}`),
 
+  getCandles: (symbol: string, timeframe: string = "1m", limit: number = 60) =>
+    fetchJson<CandleHistoryResponse>(
+      `/api/v1/market/candles/${symbol}?timeframe=${timeframe}&limit=${limit}`
+    ),
+
   getMarketStatus: () =>
     fetchJson<FeedStatus>("/api/v1/market/status"),
 
@@ -106,13 +115,8 @@ export const api = {
     }),
 
   // Margin Pre-Check
-  previewMarginAndCharges: (payload: CreateOrderPayload) =>
-    fetchJson<{
-      sufficient: boolean;
-      required_margin: number;
-      available_margin: number;
-      charges: ChargesBreakdown;
-    }>("/api/v1/margin/check", {
+  previewMarginAndCharges: (payload: MarginCheckRequest) =>
+    fetchJson<MarginCheckResponse>("/api/v1/margin/check", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

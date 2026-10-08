@@ -178,6 +178,17 @@ class MarketDataGateway:
             raise ValueError("Replay file path must be configured for replay mode.")
 
         ticks_processed = 0
+        if not self._running:
+            # Standalone single-pass replay execution (e.g. deterministic testing)
+            self._running = True
+            try:
+                async for depth in self.replay_engine.stream_ticks():
+                    await self.ingest_tick(depth)
+                    ticks_processed += 1
+            finally:
+                self._running = False
+            return ticks_processed
+
         while self._running:
             async for depth in self.replay_engine.stream_ticks():
                 if not self._running:

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.storage.database import init_db
@@ -76,7 +76,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Register REST and WebSocket routers
+    # Register REST and WebSocket routers (root mount)
     app.include_router(orders_router)
     app.include_router(portfolio_router)
     app.include_router(ledger_router)
@@ -87,6 +87,20 @@ def create_app() -> FastAPI:
     app.include_router(settlement_router)
     app.include_router(market_router)
     app.include_router(system_router)
+
+    # Register API v1 sub-routers for /api/v1 and /v1 compatibility
+    for prefix in ("/api/v1", "/v1"):
+        v1_router = APIRouter(prefix=prefix)
+        v1_router.include_router(orders_router)
+        v1_router.include_router(portfolio_router)
+        v1_router.include_router(ledger_router)
+        v1_router.include_router(margin_router)
+        v1_router.include_router(agent_router)
+        v1_router.include_router(simulation_router)
+        v1_router.include_router(settlement_router)
+        v1_router.include_router(market_router)
+        v1_router.include_router(system_router)
+        app.include_router(v1_router)
 
     @app.get("/health", tags=["Health"])
     def health_check():

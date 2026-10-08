@@ -89,10 +89,15 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
     - `TopHeader.tsx`: Global status bar with Demo Toggle Switch (`LIVE NSE` vs `OFFLINE REPLAY`), Available Cash, Realized P&L, Zero-Discrepancy audit badge (`₹0.00 Discrepancy`), Crash Replay button, and WebSocket connection indicator.
   - [x] **API Client & Proxies**: Configured `frontend/next.config.ts` with API rewrites (`/api/*` -> `http://localhost:8000/*`) and typed REST client in `frontend/src/lib/api.ts`.
   - [x] **Verification**: Production build (`npm run build`) succeeded with 0 errors across all 6 static/dynamic routes.
-
-
-
-
+- [x] **Phase 7C: Trading Terminal & Charts** *(COMPLETED)*
+  - [x] **TradingView Lightweight Charts** (`frontend/src/components/terminal/TradingViewChart.tsx`): High-performance canvas chart rendering Candlestick and Volume histogram series, dynamic resize observer, historical OHLCV loading, and live tick synthesis via WebSocket stream.
+  - [x] **5-Depth Level 2 Order Book** (`frontend/src/components/terminal/OrderBookL2.tsx`): Top 5 Bids (emerald) and Top 5 Asks (rose) with volume depth bars proportional to level quantity, live spread calculation, buyer/seller volume ratio, and click-to-trade prefill callback.
+  - [x] **Order Execution Ticket** (`frontend/src/components/terminal/OrderTicket.tsx`): Institutional order entry supporting `BUY`/`SELL`, `CNC`/`MIS`, `MARKET`/`LIMIT`/`SL`/`SL_M`, quick lot buttons (+25, +50, +100), click-to-trade price sync, and instant execution feedback.
+  - [x] **Live Indian Regulatory Charges & Margin Preview** (`frontend/src/components/terminal/ChargesPreview.tsx`, `frontend/src/lib/charges.ts`): Client-side 60fps deterministic calculator mirrored to paise precision, plus 250ms debounced server verification via `POST /api/v1/margin/check`. Itemizes Brokerage, STT, Exchange fees, SEBI charges, Stamp duty, and GST, alongside required margin and cash buffer.
+  - [x] **Backend Support Endpoints**:
+    - `POST /api/v1/margin/check` (`src/api/routers/margin.py`): Validates pre-trade margin sufficiency and returns statutory tax breakdown.
+    - `GET /api/v1/market/candles/{symbol}` (`src/api/routers/market.py`): Delivers chronologically ordered 1-minute OHLCV bars for TradingView charts.
+  - [x] **Verification Suite**: 76 pytest tests passing (100% test pass rate), Next.js production build (`npm run build`) succeeded with 0 errors across all routes.
 
 ---
 

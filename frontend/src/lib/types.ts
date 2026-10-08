@@ -84,6 +84,7 @@ export interface MarketDepth {
 }
 
 export interface ChargesBreakdown {
+  turnover?: number;
   brokerage: number;
   stt: number;
   exchange_turnover: number;
@@ -139,3 +140,45 @@ export interface CreateOrderPayload {
   price?: number;
   trigger_price?: number;
 }
+
+export interface CandleBar {
+  time: number; // Unix timestamp in seconds
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface CandleHistoryResponse {
+  symbol: string;
+  timeframe: string;
+  candles: CandleBar[];
+}
+
+export interface MarginCheckRequest {
+  account_id: string;
+  symbol: string;
+  side: Side;
+  order_type: OrderType;
+  product_type: ProductType;
+  quantity: number;
+  price?: number;
+  trigger_price?: number;
+}
+
+export interface MarginCheckResponse {
+  sufficient: boolean;
+  required_margin: number;
+  available_margin: number;
+  shortfall: number;
+  charges: ChargesBreakdown;
+}
+
+export interface OrderPlacementResponse {
+  order: Order;
+  trades: Trade[];
+  total_charges: number;
+  account_balance: number;
+}
+
