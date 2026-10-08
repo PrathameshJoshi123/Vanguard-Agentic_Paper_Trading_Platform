@@ -43,24 +43,18 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
 ## 3. Phase-by-Phase Roadmap
 
 - [x] **Phase 1: Core In-Memory Matching & Order State Machine** *(COMPLETED)*
-  - [x] Environment setup (Python 3.13 `.venv`, `requirements.txt`, dependencies installed)
-  - [x] Monolith project folder structure design (`src/common`, `src/core`, `src/market_data`, `src/risk`, `src/portfolio`, `src/ledger`, `src/scheduler`, `src/storage`, `src/events`, `src/api`, `src/agentic`)
-  - [x] Progress Tracker initialization (`docs/progress_tracker.md`)
-  - [x] Implement `src/common/` (`types.py`, `money.py`, `clock.py`, `exceptions.py`)
-  - [x] Implement `src/core/models.py` (`Order`, `TradeEvent`, `MatchRecord`, `MatchResult`)
-  - [x] Implement `src/core/state_machine.py` (`OrderStateMachine` with strict transition table, invariants, and VWAP average fill price calculation)
-  - [x] Implement `src/core/order_book.py` (`SymbolOrderBook` with price-time priority heaps, sequence ID tie-breakers, lazy cancellation tombstone pruning, and L2 depth aggregation)
-  - [x] Implement `src/core/matching_engine.py` (`DeterministicMatchingEngine` supporting multi-level walks, Limit/Market matching, maker price execution, and leg TradeEvents)
-  - [x] Implement unit tests in `tests/unit/` (15 tests passing covering state transitions, priority ordering, cancellations, multi-fills, depth, and edge cases)
-  - [x] **Verify Phase 1 Exit Criteria**: Buy Limit 100 @ 2,500 + Sell Limit 40 @ 2,500 -> Order 1 partially filled (60 remaining), Order 2 filled (0 remaining), exactly 1 atomic match occurred, 2 leg TradeEvents emitted.
-- [ ] **Phase 2: Market Data Engine & L2 Live Ticks Ingestion**
-- [ ] **Phase 3: Risk & Margin Validation Engine (CNC / MIS Leverage)**
-- [ ] **Phase 4: Positions, Holdings, Avg Price & P&L Engine**
-- [ ] **Phase 5: Financial Charges (STT, GST, Stamp, Brokerage) & Double-Entry Ledger**
-- [ ] **Phase 6: MIS 15:20 Auto Square-Off & Scheduler**
-- [ ] **Phase 7: PostgreSQL Persistence, Event Bus & Audit Log**
-- [ ] **Phase 8: FastAPI REST API & WebSocket Feeds**
-- [ ] **Phase 9: Agentic Intelligence Layer (Research, News, Portfolio, Screener)**
+- [x] **Phase 2: Financial Engine & Indian Regulatory Accounting** *(COMPLETED)*
+  - [x] Pure deterministic Indian Regulatory Charges Calculator (`src/ledger/charges.py`): Brokerage, STT, Exchange turnover, SEBI fees, Stamp duty, GST
+  - [x] Margin & Risk Engine (`src/risk/margin.py`, `src/risk/engine.py`): CNC 100%, MIS 20% leverage (5x), pre-trade checks, margin blocking on limit orders, margin release on cancel
+  - [x] Position & Portfolio Engine (`src/portfolio/models.py`, `src/portfolio/position_manager.py`): Real-time VWAP, Realized P&L, MTM Unrealized P&L, Long/Short/Reversal
+  - [x] Immutable Double-Entry Ledger (`src/ledger/models.py`, `src/ledger/journal.py`): Dual-layer customer cash journal with running balance and strict balanced T-accounts
+  - [x] Storage Integration (`src/storage/database.py`, `src/storage/models/`): SQLAlchemy 2.0 Async PostgreSQL/Supabase models & async engine
+  - [x] End-to-End Orchestrator (`src/core/trade_service.py`): Deterministic order-to-ledger execution pipeline
+  - [x] Verification Suite: 31 tests all passing, including the Phase 2 round-trip trade exit criteria (Buy 100 @ 100, Sell 100 @ 110 MIS -> Gross ₹1,000, Charges ₹11.26, Running Balance ₹50,988.74)
+- [ ] **Phase 3: Market Data Engine & L2 Live Ticks Ingestion**
+- [ ] **Phase 4: MIS 15:20 Auto Square-Off & Daily Scheduler**
+- [ ] **Phase 5: FastAPI REST API & WebSocket Real-time Feeds**
+- [ ] **Phase 6: Agentic Intelligence Layer (Isolated Plane - Research, News, Portfolio, Screener)**
 
 ---
 
@@ -128,14 +122,59 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
 | **2026-10-08 08:08** | Phase 1 Test | Created comprehensive test suites: `test_state_machine.py`, `test_order_book.py`, `test_matching_engine.py`. | Done |
 | **2026-10-08 08:09** | Phase 1 Verification | Ran `pytest -v`. Fixed remaining_qty initialization when instantiating OPEN orders directly. All 15 unit tests passed in 0.21s, fully satisfying Phase 1 Exit Criteria. | Done |
 | **2026-10-08 08:10** | Progress Update | Updated `docs/progress_tracker.md` with complete Phase 1 delivery details and transition notes for Phase 2. | Done |
+| **2026-10-08 08:18** | Phase 2 Planning | Formulated questions on charges schedule, double-entry ledger style, database approach, and MTM margin leverage. User selected standard discount broker model, dual-layer T-accounts, direct SQLAlchemy/PostgreSQL, and conservative MTM leverage. | Done |
+| **2026-10-08 08:24** | Phase 2 Core | Implemented `src/ledger/charges.py` (`IndianRegulatoryChargesCalculator`) with exact paise precision. Added unit tests in `test_charges_calculator.py`. | Done |
+| **2026-10-08 08:25** | Phase 2 Core | Implemented `src/risk/margin.py` and `src/risk/engine.py` (`PreTradeRiskEngine`, `MarginCalculator`). Added unit tests in `test_risk_margin.py`. | Done |
+| **2026-10-08 08:26** | Phase 2 Core | Implemented `src/portfolio/models.py` and `src/portfolio/position_manager.py` (VWAP, Realized P&L, MTM). Added unit tests in `test_positions_pnl.py`. | Done |
+| **2026-10-08 08:27** | Phase 2 Core | Implemented `src/ledger/models.py` and `src/ledger/journal.py` (`ImmutableDoubleEntryLedger`, T-Accounts). Added unit tests in `test_double_entry_ledger.py`. | Done |
+| **2026-10-08 08:38** | Phase 2 DB | Configured `src/storage/database.py` (Supabase PostgreSQL / asyncpg with SQLite fallback) and created SQLAlchemy models in `src/storage/models/`. Added unit tests in `test_storage_models.py`. | Done |
+| **2026-10-08 08:40** | Phase 2 Integration | Implemented `src/core/trade_service.py` coordinating Risk -> Matching -> Charges -> Positions -> Ledger. Created `tests/integration/test_financial_engine_roundtrip.py`. | Done |
+| **2026-10-08 08:42** | Phase 2 Exit Criteria | Ran all 31 pytest tests. All passed in 0.62s. Exit criteria (Buy 100 @ 100, Sell 100 @ 110 MIS -> Gross ₹1,000, Charges ₹11.26, Running balance ₹50,988.74) fully verified down to exact paisa. | Done |
 
 ---
 
-## 6. Guide for the Next Agent (Phase 2 Hand-off)
+## 6. Phase 2 Implementation Details
+
+### Files Created & Modules Implemented
+
+1. **`src/ledger/charges.py`**:
+   - `ChargesConfig`: Configurable fee schedule matching SEBI/NSE rates (Brokerage, STT, Exchange Turnover, SEBI Fees, Stamp Duty, GST).
+   - `IndianRegulatoryChargesCalculator`: Pure deterministic calculation quantized to exact paise (`0.01` with `ROUND_HALF_UP`).
+
+2. **`src/risk/margin.py` & `src/risk/engine.py`**:
+   - `MarginCalculator`: CNC 100% upfront margin + charges; MIS 20% margin (5x leverage) + charges.
+   - `PreTradeRiskEngine`: Validates margin and delivery holdings before order placement. Blocks margin on limit order placement, releases margin upon cancellation, and adjusts margin upon fills.
+
+3. **`src/portfolio/models.py` & `src/portfolio/position_manager.py`**:
+   - `Position` & `Holding`: Real-time position tracking per account, symbol, and product.
+   - `PositionManager`: Cumulative VWAP on position expansion, Realized P&L on partial/full exits, short sale support, position reversal handling, and real-time MTM against market LTP.
+
+4. **`src/ledger/models.py` & `src/ledger/journal.py`**:
+   - `ImmutableDoubleEntryLedger`: Dual-layer accounting.
+   - Customer Cash Journal: Chronological append-only entries with running balance (`CASH_DEPOSIT`, `TRADE_SETTLEMENT`, `BROKERAGE_CHARGE`, `STT_CHARGE`, `EXCHANGE_TURNOVER_CHARGE`, `SEBI_TURNOVER_CHARGE`, `STAMP_DUTY_CHARGE`, `GST_CHARGE`, `REALIZED_PNL`).
+   - Double-Entry T-Accounts: Verified balancing across `USER_CASH`, `BROKER_REVENUE`, `STT_PAYABLE`, `EXCHANGE_FEES_PAYABLE`, `SEBI_FEES_PAYABLE`, `STAMP_DUTY_PAYABLE`, `GST_PAYABLE`, `EXCHANGE_SETTLEMENT`. Enforces `sum(debits) == sum(credits)`.
+
+5. **`src/storage/database.py` & `src/storage/models/`**:
+   - Async SQLAlchemy engine supporting Supabase PostgreSQL (`postgresql+asyncpg://`) with fallback for local testing.
+   - Declarative models: `AccountModel`, `OrderModel`, `TradeModel`, `PositionModel`, `HoldingModel`, `CustomerCashEntryModel`, `DoubleEntryTransactionModel`, `DoubleEntryLegModel`.
+
+6. **`src/core/trade_service.py`**:
+   - Orchestrates the full financial flow: Order -> Risk Margin Check -> Matching Engine -> Charges Calculation -> Position & P&L Update -> Ledger Entries.
+
+7. **Verification & Tests (31 Unit & Integration Tests Passing)**:
+   - `test_charges_calculator.py`: 4 tests passing (MIS buy/sell, CNC buy, ₹20 brokerage cap).
+   - `test_risk_margin.py`: 4 tests passing (CNC vs MIS margin, pre-trade rejections, block/release lifecycle).
+   - `test_positions_pnl.py`: 3 tests passing (VWAP, short-covering, MTM P&L).
+   - `test_double_entry_ledger.py`: 3 tests passing (deposit, charges itemization, P&L credit/debit, T-account balance).
+   - `test_storage_models.py`: 1 test passing (async table creation and persistence).
+   - `test_financial_engine_roundtrip.py`: **Phase 2 Exit Criteria fully satisfied**.
+
+---
+
+## 7. Guide for the Next Agent (Phase 3 Hand-off)
 
 - **Completed Foundation**:
-  - The deterministic in-memory matching engine is fully built and tested at `src/core/matching_engine.py`.
-  - The order book (`src/core/order_book.py`) is already equipped with `get_market_depth(levels=5)` and price-time priority queues.
-- **Next Target (Phase 2: Market Data Engine & L2 Live Ticks Ingestion)**:
+  - Phase 1 (Deterministic In-Memory Order Book & Matching Engine) and Phase 2 (Financial Engine, Indian Regulatory Accounting, Risk & Margins, Positions & P&L, Double-Entry Ledger, Storage) are complete and verified with 31 passing tests.
+- **Next Target (Phase 3: Market Data Engine & L2 Live Ticks Ingestion)**:
   - In `src/market_data/`: Implement `feed_handler.py`, `tick_normalizer.py`, and tick stream ingestion to update order book depth from external live NSE ticks.
-  - Handle out-of-order ticks, duplicate ticks, and sequence gaps as specified in [ps.txt](file:///d:/My_Space/SYRUS_7/docs/ps.txt) and [plan.txt](file:///d:/My_Space/SYRUS_7/docs/plan.txt).
+  - Handle out-of-order ticks, duplicate ticks, sequence gaps, feed disconnects, and tick bursts as specified in `ps.txt` and `plan.txt`.

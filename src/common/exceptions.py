@@ -23,3 +23,23 @@ class InvalidOrderError(TradingEngineException):
 class OrderNotFoundError(TradingEngineException):
     """Raised when an order is not found in the order book or repository."""
     pass
+
+
+class InsufficientMarginError(TradingEngineException):
+    """Raised when an account does not have sufficient available margin for an order."""
+    pass
+
+
+class InsufficientHoldingsError(TradingEngineException):
+    """Raised when an account attempts to sell CNC without sufficient free holdings."""
+    pass
+
+
+class LedgerImbalanceError(TradingEngineException):
+    """Raised when debits and credits do not balance in double-entry bookkeeping."""
+    pass
+
+
+class PositionNotFoundError(TradingEngineException):
+    """Raised when a queried position does not exist."""
+    pass
