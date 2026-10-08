@@ -29,6 +29,8 @@ def get_market_gateway() -> MarketDataGateway:
         svc = get_trade_service()
         _market_gateway = MarketDataGateway(
             replay_mode=True,
+            replay_file_path="data/reliance_50_ticks.jsonl",
+            replay_speed_multiplier=1.5,
             event_bus=get_event_bus(),
             position_manager=svc.position_manager,
         )
@@ -45,6 +47,16 @@ def get_position_manager():
 
 def get_ledger():
     return get_trade_service().ledger
+
+
+def get_recovery_service():
+    from src.core.recovery import CrashRecoveryService
+    return CrashRecoveryService(get_trade_service())
+
+
+def get_reconciliation_service():
+    from src.core.reconciliation import AuditReconciliationService
+    return AuditReconciliationService(get_trade_service())
 
 
 

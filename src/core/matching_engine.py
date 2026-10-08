@@ -25,6 +25,9 @@ class DeterministicMatchingEngine:
             self.books[symbol] = SymbolOrderBook(symbol)
         return self.books[symbol]
 
+    def get_book(self, symbol: str) -> SymbolOrderBook:
+        return self.get_or_create_book(symbol)
+
     def _next_trade_id(self) -> str:
         self._trade_counter += 1
         return f"TRD-{self._trade_counter:06d}"

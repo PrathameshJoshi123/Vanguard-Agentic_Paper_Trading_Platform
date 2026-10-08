@@ -71,7 +71,14 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
   - [x] Read-Only Tool Gateway (`src/agentic/tools/read_tools.py`): `get_current_price`, `get_portfolio_positions`, `get_ledger_summary`, `get_news_by_symbol` directly inspect trading plane without side effects.
   - [x] Multi-Source Research & Web Intelligence (`src/agentic/tools/scraper.py`): Multi-source engine combining DuckDuckGo search (`ddgs` library) for live web news & broker research with Google News RSS and Moneycontrol RSS feeds.
   - [x] Live Mistral LLM Integration (`src/agentic/llm.py`, `src/agentic/synthesizer.py`): Full integration with Mistral AI via `langchain-mistralai` (`ChatMistralAI`), verified live with active API credentials and comprehensive test coverage.
-  - [x] Verification Suite: Tests passing for DDGS scraper (`test_market_research_scraper.py`), policy engine (`test_agent_policy_engine.py`), read tools (`test_agent_read_tools.py`), graph integration (`test_agent_graph_integration.py`), and REST endpoint (`test_api_agent_chat.py`), satisfying the Phase 5 Exit Criteria.
+- [x] **Phase 7A: Backend API Support & Crash Recovery** *(COMPLETED)*
+  - [x] **Event Store Persistence** (`src/storage/models/event_log.py`, `src/events/consumers/persistence.py`): Immutable `EventLogModel` table appending all domain events in chronological order, with full JSON payloads and sequence numbers. Materialized database persistence for orders, trades, cash journal, and positions.
+  - [x] **Continuous Audit Reconciliation Engine** (`src/core/reconciliation.py`): Multi-dimensional integrity auditor verifying Double-Entry T-Accounts equilibrium (`Total Debits == Total Credits`), Customer Cash Running Balance against Account Risk State, Trade-to-Order fills, and Net Position quantities matching executed trades. Guarantees ₹0.00 discrepancy.
+  - [x] **Crash Recovery Service** (`src/core/recovery.py`): Cold restart reconstructor that wipes in-memory execution structures, reads durable database records / event store, restores active accounts, re-populates resting orders into matching engine books, re-establishes position quantities and double-entry journals, and runs reconciliation verification.
+  - [x] **Market Feed & Resilience Router** (`src/api/routers/market.py`): Endpoints `GET /market/depth/{symbol}`, `GET /market/status`, and `POST /market/feed-mode` (the "Demo Toggle Switch") allowing instant dynamic switching between Live NSE feed and Offline Replay.
+  - [x] **System Resilience & Demo Router** (`src/api/routers/system.py`): Endpoints `POST /system/crash-replay` (Step 2 Demo: cold restart from event log), `GET /system/reconcile` (real-time audit report), and `POST /system/simulate-drop` (Step 4 Demo: instant drop injection triggering autonomous alert feed).
+  - [x] **Agent Proposed Order Execution** (`src/api/routers/agent.py`): Endpoint `POST /agent/execute-proposed` executing user-approved trade proposals directly into the deterministic matching engine.
+  - [x] **Verification Suite**: 72 tests passing across unit and integration suites (100% test pass rate).
 
 
 

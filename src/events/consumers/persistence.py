@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime
 from decimal import Decimal
 import logging
@@ -11,6 +12,7 @@ from src.storage.models.order import OrderModel
 from src.storage.models.trade import TradeModel
 from src.storage.models.position import PositionModel, HoldingModel
 from src.storage.models.ledger import CustomerCashEntryModel
+from src.storage.models.event_log import EventLogModel
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,20 @@ class DatabasePersistenceWorker:
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    # 1. Append immutable event log
+                    db_log = EventLogModel(
+                        event_id=event.event_id,
+                        event_type=event.event_type,
+                        entity_type=event.entity_type,
+                        entity_id=event.entity_id,
+                        account_id=event.account_id,
+                        payload_json=json.dumps(event.payload, default=str),
+                        sequence=event.sequence,
+                        timestamp=event.timestamp,
+                    )
+                    session.add(db_log)
+
+                    # 2. Materialized entity persistence
                     if event.event_type in (
                         DomainEventType.ORDER_PLACED,
                         DomainEventType.ORDER_MODIFIED,
@@ -129,6 +145,55 @@ class DatabasePersistenceWorker:
                                 is_maker=p.get("is_maker", False),
                             )
                             session.add(db_trade)
+
+                    elif event.event_type == DomainEventType.LEDGER_ENTRY_RECORDED:
+                        p = event.payload
+                        entry_id = p.get("entry_id")
+                        if entry_id:
+                            stmt = select(CustomerCashEntryModel).where(CustomerCashEntryModel.entry_id == entry_id)
+                            res = await session.execute(stmt)
+                            if not res.scalar_one_or_none():
+                                db_entry = CustomerCashEntryModel(
+                                    entry_id=entry_id,
+                                    account_id=p.get("account_id", "DEFAULT"),
+                                    category=p.get("category", "TRADE_SETTLEMENT"),
+                                    debit=Decimal(str(p.get("debit", "0.00"))),
+                                    credit=Decimal(str(p.get("credit", "0.00"))),
+                                    running_balance=Decimal(str(p.get("running_balance", "0.00"))),
+                                    reference_id=p.get("reference_id", ""),
+                                    description=p.get("description", ""),
+                                )
+                                session.add(db_entry)
+
+                    elif event.event_type == DomainEventType.POSITION_UPDATED:
+                        p = event.payload
+                        account_id = p.get("account_id", "DEFAULT")
+                        symbol = p.get("symbol")
+                        product_type = p.get("product_type", "CNC")
+                        if symbol:
+                            stmt = select(PositionModel).where(
+                                PositionModel.account_id == account_id,
+                                PositionModel.symbol == symbol,
+                                PositionModel.product_type == product_type,
+                            )
+                            res = await session.execute(stmt)
+                            pos = res.scalar_one_or_none()
+                            if not pos:
+                                pos = PositionModel(
+                                    account_id=account_id,
+                                    symbol=symbol,
+                                    product_type=product_type,
+                                    quantity=p.get("quantity", 0),
+                                    average_buy_price=Decimal(str(p.get("average_buy_price", "0.00"))),
+                                    realized_pnl=Decimal(str(p.get("realized_pnl", "0.00"))),
+                                    unrealized_pnl=Decimal(str(p.get("unrealized_pnl", "0.00"))),
+                                )
+                                session.add(pos)
+                            else:
+                                pos.quantity = p.get("quantity", pos.quantity)
+                                pos.average_buy_price = Decimal(str(p.get("average_buy_price", pos.average_buy_price)))
+                                pos.realized_pnl = Decimal(str(p.get("realized_pnl", pos.realized_pnl)))
+                                pos.unrealized_pnl = Decimal(str(p.get("unrealized_pnl", pos.unrealized_pnl)))
         except Exception as e:
             # Non-critical: failure in background persistence must not crash trading engine
             logger.debug(f"Async persistence notice: {e}")

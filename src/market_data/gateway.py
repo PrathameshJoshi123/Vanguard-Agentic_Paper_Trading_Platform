@@ -68,8 +68,57 @@ class MarketDataGateway:
             self._subscribers[sym] = []
         self._subscribers[sym].append(callback)
 
-    def get_latest_depth(self, symbol: str) -> Optional[MarketDepth]:
-        return self._latest_depths.get(symbol.upper())
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    def get_latest_depth(self, symbol: str) -> MarketDepth:
+        sym = symbol.upper()
+        if sym in self._latest_depths:
+            return self._latest_depths[sym]
+        from src.market_data.models import DepthLevel
+        from datetime import datetime, timezone
+        from decimal import Decimal
+        base_price = Decimal("2500.00") if sym == "RELIANCE" else (Decimal("3500.00") if sym == "TCS" else Decimal("1800.00"))
+        default_depth = MarketDepth(
+            symbol=sym,
+            ltp=base_price,
+            bids=[
+                DepthLevel(price=base_price - Decimal("0.50") * (i + 1), quantity=100 * (i + 1), orders=i + 1)
+                for i in range(5)
+            ],
+            asks=[
+                DepthLevel(price=base_price + Decimal("0.50") * (i + 1), quantity=150 * (i + 1), orders=i + 1)
+                for i in range(5)
+            ],
+            total_buy_quantity=15000,
+            total_sell_quantity=17000,
+            volume=500000,
+            timestamp=datetime.now(timezone.utc),
+            sequence_id=0,
+        )
+        self._latest_depths[sym] = default_depth
+        return default_depth
+
+    async def switch_feed_mode(
+        self,
+        replay_mode: bool,
+        replay_file_path: Optional[str] = None,
+        symbols: Optional[List[str]] = None,
+    ) -> None:
+        """Dynamically switches between LIVE NSE feed and OFFLINE REPLAY."""
+        was_running = self._running
+        if was_running:
+            await self.stop()
+        self.replay_mode = replay_mode
+        if replay_file_path:
+            self.replay_file_path = replay_file_path
+            self.replay_engine = ReplayEngine(
+                file_path=self.replay_file_path,
+                speed_multiplier=self.replay_speed_multiplier,
+            )
+        if was_running:
+            await self.start(symbols)
 
     def get_feed_health(self, symbol: str) -> FeedHealth:
         return self.sequence_manager.get_health(symbol)
@@ -124,14 +173,20 @@ class MarketDataGateway:
         return triggered_results
 
     async def run_replay(self) -> int:
-        """Runs the historical replay to completion, ingesting all valid ticks."""
+        """Runs the historical replay continuously while running."""
         if not self.replay_engine:
             raise ValueError("Replay file path must be configured for replay mode.")
 
         ticks_processed = 0
-        async for depth in self.replay_engine.stream_ticks():
-            await self.ingest_tick(depth)
-            ticks_processed += 1
+        while self._running:
+            async for depth in self.replay_engine.stream_ticks():
+                if not self._running:
+                    break
+                await self.ingest_tick(depth)
+                ticks_processed += 1
+            if not self._running:
+                break
+            await asyncio.sleep(1.0)
         return ticks_processed
 
     async def start(self, symbols: Optional[List[str]] = None) -> None:

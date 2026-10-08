@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import uuid
 
 from src.common.types import LedgerCategory, AccountCategory, Side
@@ -330,3 +330,21 @@ class ImmutableDoubleEntryLedger:
             if computed_bal != entry.running_balance:
                 return False
         return computed_bal == self.get_running_balance(account_id)
+
+    def get_all_t_accounts(self) -> Dict[str, Any]:
+        """Summarizes all debits and credits grouped by account category."""
+        class TAccountSummary:
+            def __init__(self, category: str):
+                self.category = category
+                self.total_debits = Decimal("0.00")
+                self.total_credits = Decimal("0.00")
+
+        summaries: Dict[str, TAccountSummary] = {}
+        for txn in self._double_entry_journal:
+            for leg in txn.legs:
+                cat = str(leg.account_category)
+                if cat not in summaries:
+                    summaries[cat] = TAccountSummary(cat)
+                summaries[cat].total_debits += leg.debit
+                summaries[cat].total_credits += leg.credit
+        return summaries

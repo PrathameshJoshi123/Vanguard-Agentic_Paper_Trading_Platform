@@ -53,6 +53,16 @@ class TradeExecutionService:
         self._orders: Dict[str, Order] = {}
         self._trades: List[TradeEvent] = []
 
+    def reset_state(self) -> None:
+        """Simulates clean shutdown or crash by resetting in-memory execution structures."""
+        self._accounts.clear()
+        self._orders.clear()
+        self._trades.clear()
+        self.matching_engine = DeterministicMatchingEngine()
+        self.risk_engine = PreTradeRiskEngine()
+        self.position_manager = PositionManager()
+        self.ledger = ImmutableDoubleEntryLedger()
+
     def _emit(
         self,
         event_type: str,

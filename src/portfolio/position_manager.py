@@ -29,6 +29,10 @@ class PositionManager:
             )
         return self._positions[key]
 
+    def get_positions(self, account_id: str) -> List[Position]:
+        """Retrieves all positions for an account."""
+        return [p for p in self._positions.values() if p.account_id == account_id]
+
     def get_holding(self, account_id: str, symbol: str) -> Optional[Holding]:
         return self._holdings.get((account_id, symbol))
 

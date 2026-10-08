@@ -14,9 +14,11 @@ from src.api.routers import (
     agent_router,
     simulation_router,
     settlement_router,
+    market_router,
+    system_router,
 )
 from src.api.websocket import websocket_router, ws_manager
-from src.api.dependencies import get_trade_service
+from src.api.dependencies import get_trade_service, get_market_gateway
 from src.agentic.monitor.event_monitor import AutonomousEventMonitor
 from src.settlement.mis_squareoff import MISSquareOffManager
 from src.scheduler.service import TradingSchedulerService
@@ -28,6 +30,7 @@ async def lifespan(app: FastAPI):
     await init_db()
 
     trade_service = get_trade_service()
+    market_gateway = get_market_gateway()
     ws_worker = WebSocketBroadcasterWorker(event_bus=default_event_bus, manager=ws_manager)
     db_worker = DatabasePersistenceWorker(event_bus=default_event_bus)
     monitor_worker = AutonomousEventMonitor(
@@ -41,13 +44,16 @@ async def lifespan(app: FastAPI):
     await db_worker.start()
     await monitor_worker.start()
     scheduler_service.start()
+    await market_gateway.start(["RELIANCE"])
 
     app.state.monitor_worker = monitor_worker
     app.state.scheduler_service = scheduler_service
+    app.state.market_gateway = market_gateway
 
     yield
 
     # Shutdown: gracefully stop workers
+    await market_gateway.stop()
     scheduler_service.stop()
     await monitor_worker.stop()
     await ws_worker.stop()
@@ -79,6 +85,8 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(simulation_router)
     app.include_router(settlement_router)
+    app.include_router(market_router)
+    app.include_router(system_router)
 
     @app.get("/health", tags=["Health"])
     def health_check():
