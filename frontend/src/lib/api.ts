@@ -16,6 +16,13 @@ import {
   ContractNoteSummary,
   CustomerCashEntry,
   LedgerSummary,
+  AgentChatResponse,
+  ExecuteProposedResult,
+  WhatIfSimulationRequest,
+  WhatIfSimulationResult,
+  Side,
+  OrderType,
+  ProductType,
 } from "./types";
 
 // Base API route proxied by Next.js rewrites to http://localhost:8000
@@ -215,19 +222,37 @@ export const api = {
 
   // Copilot Chat
   copilotChat: (prompt: string, accountId: string = "DEFAULT") =>
-    fetchJson<{
-      response: string;
-      agent_routed: string;
-      proposed_order?: CreateOrderPayload;
-      citations?: Array<{ title: string; source: string; url?: string }>;
-    }>("/api/v1/agent/chat", {
+    fetchJson<AgentChatResponse>("/api/v1/agent/chat", {
       method: "POST",
-      body: JSON.stringify({ prompt, account_id: accountId }),
+      body: JSON.stringify({ prompt, query: prompt, account_id: accountId }),
     }),
 
-  executeProposedOrder: (orderPayload: CreateOrderPayload) =>
-    fetchJson<Order>("/api/v1/agent/execute-proposed", {
+  executeProposedOrder: (payload: {
+    symbol: string;
+    side: Side;
+    quantity: number;
+    price?: number;
+    order_type?: OrderType;
+    product_type?: ProductType;
+    account_id?: string;
+  }) =>
+    fetchJson<ExecuteProposedResult>("/api/v1/agent/execute-proposed", {
       method: "POST",
-      body: JSON.stringify(orderPayload),
+      body: JSON.stringify({
+        account_id: payload.account_id || "DEFAULT",
+        symbol: payload.symbol,
+        side: payload.side,
+        quantity: payload.quantity,
+        price: payload.price,
+        order_type: payload.order_type || "LIMIT",
+        product_type: payload.product_type || "CNC",
+      }),
+    }),
+
+  // What-If Simulation
+  simulateScenario: (payload: WhatIfSimulationRequest) =>
+    fetchJson<WhatIfSimulationResult>("/api/v1/agent/simulate", {
+      method: "POST",
+      body: JSON.stringify(payload),
     }),
 };

@@ -285,3 +285,35 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
    - `tests/unit/test_simulation_engine.py`: 3 tests passing (percentage drop math, prompt parsing, hypothetical orders with charges).
    - `tests/unit/test_event_monitor.py`: 3 tests passing (cooldown/debounce logic, threshold evaluator, autonomous alert publish).
    - `tests/integration/test_phase6_proactive_alert.py`: **Phase Exit Criteria fully verified** (simulated 6% drop in held stock popped up structured alert on WebSocket in < 2 seconds).
+
+
+---
+
+## 9. Phase 7E Implementation Details (AI Copilot & Risk Alerts)
+
+### Overview
+Phase 7E establishes the complete decoupled **Intelligence Plane** in the monolithic application, seamlessly integrating conversational multi-source equity research, strict Policy Gate trade authorization, interactive What-If scenario simulations, and the real-time proactive risk alert feed.
+
+### Modules Created & Enhanced
+
+1. **Frontend UI Components (`frontend/src/components/copilot/`)**:
+   - `CopilotChat.tsx`: Multi-turn conversational chat stream with quick prompt pills, automatic scroll-to-bottom, streaming thinking indicators, and clear conversation management.
+   - `ChatMessage.tsx`: Chat bubble rendering with specialist routing badges (`Research Specialist`, `Portfolio Specialist`, `Trade Proposer Agent`), real citations, and inline policy cards.
+   - `WebCitationsList.tsx`: Verified news citation card grid presenting headlines, sources (DuckDuckGo, Google News, Moneycontrol), publication timestamps, snippets, and verified external links.
+   - `PolicyApprovalCard.tsx`: Interactive human approval card for compliant proposed trades. Displays symbol, side, order type, product type, quantity, reference price, and estimated value, alongside exact itemized statutory charges (Brokerage, STT, Exchange turnover, SEBI fee, Stamp duty, GST) and margin requirements. Features direct one-click execution (`Approve & Execute Trade`) routing into the deterministic matching engine.
+   - `PolicyRejectionCard.tsx`: Safety policy firewall notice for over-limit proposals (e.g. order value > ₹50,000, loss > ₹2,000, or insufficient margin), highlighting the violated hard limit rule and reason.
+   - `WhatIfSandbox.tsx`: Dual-mode simulation workspace supporting both natural language prompts (*"What if TCS falls 6%?"*) and visual interactive shock sliders (-25% to +25%). Evaluates cloned account state without mutating live data, displaying side-by-side projected MTM P&L delta, margin utilization, and statutory levies.
+   - `ProactiveAlertFeed.tsx`: Live WebSocket-connected notification feed displaying unprompted risk alerts (Tick Drop > 3%, Position Loss > 5%) with Mistral AI institutional briefs and a dedicated judge demo button (**"Simulate Market Drop (-5.5%)"**).
+   - `frontend/src/app/copilot/page.tsx`: Full-width institutional Tabbed Workspace organizing `[Conversational Copilot]`, `[What-If Scenario Sandbox]`, and `[Proactive Risk Alerts]`.
+
+2. **Backend API Polish (`src/api/routers/agent.py` & `src/agentic/graph.py`)**:
+   - Extended `AgentChatRequest` with `query` and `prompt` aliases.
+   - Extended `AgentChatResponse` with `agent_routed`, `citations`, `policy_result`, and `proposed_order`.
+   - Connected `trade_service` into `AgentPolicyEngine` to validate real account balance for pre-trade margin checks.
+   - Enriched `POST /api/v1/agent/execute-proposed` with order status, fill quantity, and trade leg count.
+   - Extended `SimulateDropRequest` in `src/api/routers/system.py` to support both `drop_percentage` and `drop_pct`.
+
+3. **Verification & Test Suite**:
+   - `tests/integration/test_phase7e_copilot_and_approval.py`: 4 dedicated integration tests covering research citations, policy firewall rejection, compliant proposal execution, What-If simulation, and simulated drop injection.
+   - Full test suite: **84 passed across all unit and integration tests (100% pass rate)**.
+   - Frontend build: **Next.js 15 production build (`npm run build`) succeeded with 0 errors across all routes**.

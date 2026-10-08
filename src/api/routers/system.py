@@ -25,7 +25,8 @@ class CrashReplayRequest(BaseModel):
 
 class SimulateDropRequest(BaseModel):
     symbol: str = Field(default="RELIANCE", description="Symbol to simulate price drop for")
-    drop_percentage: float = Field(default=5.0, ge=1.0, le=50.0, description="Percentage drop (e.g., 5.0 for -5%)")
+    drop_percentage: Optional[float] = Field(default=None, description="Percentage drop (e.g., 5.0 for -5%)")
+    drop_pct: Optional[float] = Field(default=None, description="Alias for drop_percentage")
 
 
 @router.post("/crash-replay", status_code=status.HTTP_200_OK)
@@ -81,7 +82,8 @@ async def simulate_market_drop(
     current_depth = gateway.get_latest_depth(sym)
     old_price = current_depth.ltp
 
-    multiplier = Decimal(str(1.0 - (req.drop_percentage / 100.0)))
+    drop_val = req.drop_percentage if req.drop_percentage is not None else (req.drop_pct if req.drop_pct is not None else 5.0)
+    multiplier = Decimal(str(1.0 - (drop_val / 100.0)))
     new_price = round(old_price * multiplier, 2)
 
     # Construct dropped depth

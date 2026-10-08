@@ -262,4 +262,112 @@ export interface MISSquareOffResult {
   realized_pnl?: number;
 }
 
+// Phase 7E: AI Copilot, Policy Gate & Simulation Types
+export interface WebCitation {
+  title: string;
+  link: string;
+  source: string;
+  summary: string;
+  published: string;
+}
+
+export interface OrderProposalPayload {
+  proposal_id?: string;
+  account_id: string;
+  symbol: string;
+  side: Side;
+  order_type: OrderType;
+  product_type: ProductType;
+  quantity: number;
+  price: number;
+  estimated_order_value: number;
+  status?: string;
+}
+
+export interface PolicyCheckResult {
+  status: "NEEDS_APPROVAL" | "REJECTED" | string;
+  reason?: string;
+  order_payload?: OrderProposalPayload;
+}
+
+export interface ExecuteProposedResult {
+  status: string;
+  order_id: string;
+  symbol: string;
+  side: string;
+  filled_qty: number;
+  remaining_qty: number;
+  average_fill_price?: string | null;
+  trades_count: number;
+}
+
+export interface AgentChatResponse {
+  response: string;
+  agent_routed: string;
+  citations: WebCitation[];
+  policy_result?: PolicyCheckResult | null;
+  proposed_order?: OrderProposalPayload | null;
+  specialist_data?: Record<string, any>;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: "user" | "copilot";
+  text: string;
+  timestamp: string;
+  agent_routed?: string;
+  citations?: WebCitation[];
+  policy_result?: PolicyCheckResult | null;
+  proposed_order?: OrderProposalPayload | null;
+  execution_result?: ExecuteProposedResult | null;
+}
+
+export interface WhatIfSimulatedPosition {
+  symbol: string;
+  product_type: ProductType;
+  quantity: number;
+  average_price: number;
+  current_price: number;
+  simulated_price: number;
+  price_change_pct: number;
+  current_unrealized_pnl: number;
+  projected_unrealized_pnl: number;
+  pnl_delta: number;
+}
+
+export interface WhatIfPriceScenario {
+  symbol: string;
+  price_change_pct?: number;
+  target_price?: number;
+}
+
+export interface WhatIfHypotheticalOrder {
+  symbol: string;
+  side: Side;
+  quantity: number;
+  price: number;
+  product_type?: ProductType;
+}
+
+export interface WhatIfSimulationRequest {
+  account_id: string;
+  scenarios?: WhatIfPriceScenario[];
+  hypothetical_orders?: WhatIfHypotheticalOrder[];
+  natural_language_prompt?: string;
+}
+
+export interface WhatIfSimulationResult {
+  account_id: string;
+  current_total_unrealized_pnl: number;
+  projected_total_unrealized_pnl: number;
+  projected_pnl_delta: number;
+  current_margin_utilized: number;
+  projected_margin_utilized: number;
+  available_cash: number;
+  positions: WhatIfSimulatedPosition[];
+  projected_charges: number;
+  risk_assessment: string;
+  narrative_summary: string;
+}
+
 

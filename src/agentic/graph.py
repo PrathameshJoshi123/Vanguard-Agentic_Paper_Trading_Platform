@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from langgraph.graph import StateGraph, END
 from src.agentic.state import AgentState
 from src.agentic.llm import get_mistral_llm
@@ -17,6 +17,7 @@ from src.ledger.journal import ImmutableDoubleEntryLedger
 
 def build_agentic_graph(
     risk_engine: Optional[PreTradeRiskEngine] = None,
+    trade_service: Optional[Any] = None,
     market_gateway: Optional[MarketDataGateway] = None,
     position_manager: Optional[PositionManager] = None,
     ledger: Optional[ImmutableDoubleEntryLedger] = None
@@ -31,7 +32,11 @@ def build_agentic_graph(
     """
     # 1. Initialize LLM & Tool Gateways
     llm = get_mistral_llm()
-    policy_engine = AgentPolicyEngine(risk_engine=risk_engine, market_gateway=market_gateway)
+    policy_engine = AgentPolicyEngine(
+        risk_engine=risk_engine,
+        trade_service=trade_service,
+        market_gateway=market_gateway,
+    )
     write_tools = AgentWriteTools(policy_engine=policy_engine)
     read_tools = AgentReadTools(
         market_gateway=market_gateway,
