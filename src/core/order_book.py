@@ -69,22 +69,58 @@ class SymbolOrderBook:
         order.remaining_qty = 0
         return order
 
+    def modify_order(
+        self,
+        order_id: str,
+        new_quantity: Optional[int] = None,
+        new_price: Optional[Decimal] = None,
+    ) -> Order:
+        """Modifies price and/or quantity of an active resting order."""
+        order = self._orders.get(order_id)
+        if not order:
+            raise OrderNotFoundError(f"Order '{order_id}' not found in order book '{self.symbol}'.")
+
+        if not order.is_active:
+            raise InvalidOrderError(f"Cannot modify order '{order_id}' with status '{order.status.value}'.")
+
+        if new_quantity is not None:
+            if new_quantity <= order.filled_qty:
+                raise InvalidOrderError(f"New quantity ({new_quantity}) must be greater than filled quantity ({order.filled_qty}).")
+            order.quantity = new_quantity
+            order.remaining_qty = new_quantity - order.filled_qty
+
+        if new_price is not None:
+            order.price = to_money(new_price)
+
+        # Reprioritize in heap with new sequence id
+        seq = self._next_sequence()
+        order.sequence_id = seq
+
+        if order.side == Side.BUY:
+            entry = (-order.price, order.created_at, seq, order.order_id)
+            heapq.heappush(self._bids_heap, entry)
+        else:
+            entry = (order.price, order.created_at, seq, order.order_id)
+            heapq.heappush(self._asks_heap, entry)
+
+        return order
+
     def _prune_bids(self) -> None:
-        """Lazily prunes non-active / empty orders from the top of the bids heap."""
+        """Lazily prunes non-active / empty / stale orders from the top of the bids heap."""
         while self._bids_heap:
-            _, _, _, order_id = self._bids_heap[0]
+            _, _, seq, order_id = self._bids_heap[0]
             order = self._orders.get(order_id)
-            if order is None or not order.is_active or order.remaining_qty <= 0:
+            if order is None or not order.is_active or order.remaining_qty <= 0 or order.sequence_id != seq:
                 heapq.heappop(self._bids_heap)
             else:
                 break
 
     def _prune_asks(self) -> None:
-        """Lazily prunes non-active / empty orders from the top of the asks heap."""
+        """Lazily prunes non-active / empty / stale orders from the top of the asks heap."""
         while self._asks_heap:
-            _, _, _, order_id = self._asks_heap[0]
+            _, _, seq, order_id = self._asks_heap[0]
             order = self._orders.get(order_id)
-            if order is None or not order.is_active or order.remaining_qty <= 0:
+            if order is None or not order.is_active or order.remaining_qty <= 0 or order.sequence_id != seq:
                 heapq.heappop(self._asks_heap)
             else:
                 break
@@ -145,16 +181,16 @@ class SymbolOrderBook:
         bids_depth: Dict[Decimal, int] = {}
         asks_depth: Dict[Decimal, int] = {}
 
-        # Collect active bids
-        for _, _, _, order_id in self._bids_heap:
+        # Collect active bids (matching active sequence_id)
+        for _, _, seq, order_id in self._bids_heap:
             order = self._orders.get(order_id)
-            if order and order.is_active and order.remaining_qty > 0 and order.price is not None:
+            if order and order.is_active and order.remaining_qty > 0 and order.price is not None and order.sequence_id == seq:
                 bids_depth[order.price] = bids_depth.get(order.price, 0) + order.remaining_qty
 
-        # Collect active asks
-        for _, _, _, order_id in self._asks_heap:
+        # Collect active asks (matching active sequence_id)
+        for _, _, seq, order_id in self._asks_heap:
             order = self._orders.get(order_id)
-            if order and order.is_active and order.remaining_qty > 0 and order.price is not None:
+            if order and order.is_active and order.remaining_qty > 0 and order.price is not None and order.sequence_id == seq:
                 asks_depth[order.price] = asks_depth.get(order.price, 0) + order.remaining_qty
 
         sorted_bids = sorted(bids_depth.items(), key=lambda x: x[0], reverse=True)[:levels]
@@ -164,3 +200,4 @@ class SymbolOrderBook:
             "bids": [{"price": p, "quantity": q} for p, q in sorted_bids],
             "asks": [{"price": p, "quantity": q} for p, q in sorted_asks],
         }
+

@@ -153,3 +153,18 @@ class DeterministicMatchingEngine:
 
         self.state_machine.transition(order, target_status=OrderStatus.CANCELLED, reason="User cancellation request.")
         return order
+
+    def modify_order(
+        self,
+        symbol: str,
+        order_id: str,
+        new_quantity: Optional[int] = None,
+        new_price: Optional[Decimal] = None,
+    ) -> Order:
+        """Modifies price and/or quantity of an active resting order."""
+        if symbol not in self.books:
+            raise OrderNotFoundError(f"Order book for '{symbol}' does not exist.")
+
+        book = self.books[symbol]
+        return book.modify_order(order_id=order_id, new_quantity=new_quantity, new_price=new_price)
+

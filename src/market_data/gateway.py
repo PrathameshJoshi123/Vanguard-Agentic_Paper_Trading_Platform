@@ -9,6 +9,11 @@ from src.market_data.replay_engine import ReplayEngine
 from src.market_data.live_feed import LiveNSEFeedHandler
 from src.market_data.depth_matcher import MarketDepthMatcher, TriggeredOrderResult
 
+from src.events.bus import InMemoryEventBus, default_event_bus
+from src.events.models import DomainEvent, DomainEventType
+from src.portfolio.position_manager import PositionManager
+import uuid
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +24,7 @@ class MarketDataGateway:
       - Replay Mode: Reads historical ticks from .jsonl file with configurable speed.
       - Sequence & Resilience Management: Drops duplicates, checks order, tracks gaps.
       - Integrates with MarketDepthMatcher to trigger SL/SL-M orders and cross resting limits.
+      - Publishes TICK_RECEIVED and updates position MTM.
     """
 
     def __init__(
@@ -27,11 +33,15 @@ class MarketDataGateway:
         replay_file_path: Optional[str] = None,
         replay_speed_multiplier: Optional[float] = None,
         depth_matcher: Optional[MarketDepthMatcher] = None,
+        event_bus: Optional[InMemoryEventBus] = None,
+        position_manager: Optional[PositionManager] = None,
     ):
         self.replay_mode = replay_mode
         self.replay_file_path = replay_file_path
         self.replay_speed_multiplier = replay_speed_multiplier
         self.depth_matcher = depth_matcher
+        self.event_bus = event_bus if event_bus is not None else default_event_bus
+        self.position_manager = position_manager
 
         self.sequence_manager = SequenceManager()
         self.live_feed = LiveNSEFeedHandler()
@@ -42,6 +52,7 @@ class MarketDataGateway:
                 file_path=self.replay_file_path,
                 speed_multiplier=self.replay_speed_multiplier,
             )
+
 
         # symbol -> latest MarketDepth
         self._latest_depths: Dict[str, MarketDepth] = {}
@@ -74,6 +85,29 @@ class MarketDataGateway:
 
         sym = depth.symbol.upper()
         self._latest_depths[sym] = depth
+
+        # Update MTM in position manager
+        if self.position_manager:
+            self.position_manager.update_market_price(sym, depth.ltp)
+
+        # Emit TICK_RECEIVED event non-blockingly
+        if self.event_bus:
+            self.event_bus.publish_nowait(
+                DomainEvent(
+                    event_id=f"EVT_{uuid.uuid4().hex[:12]}",
+                    event_type=DomainEventType.TICK_RECEIVED,
+                    entity_type="MARKET",
+                    entity_id=sym,
+                    payload={
+                        "symbol": sym,
+                        "ltp": float(depth.ltp),
+                        "volume": depth.volume,
+                        "timestamp": depth.timestamp.isoformat(),
+                        "bids": [{"price": float(b.price), "quantity": b.quantity} for b in depth.bids[:5]],
+                        "asks": [{"price": float(a.price), "quantity": a.quantity} for a in depth.asks[:5]],
+                    },
+                )
+            )
 
         # Trigger SL orders and cross resting limit orders
         triggered_results: List[TriggeredOrderResult] = []
