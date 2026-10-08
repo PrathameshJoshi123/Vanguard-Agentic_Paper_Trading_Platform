@@ -1,0 +1,2001 @@
+PS-05 — Agentic Paper Trading Engine
+1. Vision
+Build a production-grade paper trading platform that simulates an Indian equity exchange environment using live market data while maintaining exchange-like order execution, realistic market-depth fills, margin validation, charges, positions, P&L and complete financial traceability.
+On top of this deterministic trading engine, build an Agentic Trading Intelligence Layer capable of performing market research, news analysis, portfolio analysis, stock discovery, event monitoring, risk explanations, personalized insights and trade recommendations.
+The system should behave like two separate systems:
+                   ┌─────────────────────────────────────┐
+                    │       AGENTIC INTELLIGENCE           │
+                    │                                     │
+                    │ Research • News • Insights          │
+                    │ Recommendations • Risk Analysis     │
+                    │ Portfolio Intelligence • Alerts      │
+                    │ Natural Language Interface           │
+                    └──────────────────┬──────────────────┘
+                                       │
+                              Read / Analyze
+                                       │
+                                       ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                    DETERMINISTIC TRADING ENGINE                  │
+│                                                                  │
+│ Market Data → Order Validation → Risk → Order Book → Matching   │
+│                         → Trades → Positions → Ledger            │
+│                                                                  │
+│              LOW LATENCY • DETERMINISTIC • AUDITABLE             │
+└──────────────────────────────────────────────────────────────────┘
+
+The agentic layer must never be allowed to compromise the correctness or latency of the core trading engine.
+
+2. Core Design Principle
+The most important architectural decision is to separate the platform into two planes.
+Trading Plane
+The trading plane handles:
+Market data ingestion, order validation, margin checks, order books, matching, partial fills, positions, P&L, charges, settlement, MIS square-off and ledger updates.
+This plane must be deterministic.
+Given the same:
+Initial State
++
+Market Events
++
+User Commands
++
+Configuration
+
+it should always produce the same:
+Orders
++
+Trades
++
+Positions
++
+Ledger
++
+P&L
++
+Events
+
+Intelligence Plane
+The intelligence plane handles:
+Research
+News
+Market interpretation
+Portfolio analysis
+Screening
+Recommendations
+Risk explanations
+Alerts
+Natural-language queries
+What-if analysis
+Agentic workflows
+
+This plane can be slower because it is not responsible for executing the actual matching algorithm.
+
+3. Complete System Architecture
+flowchart TB
+
+    USER["User / Test Harness"]
+
+    subgraph API["API & Interaction Layer"]
+        GW["API Gateway"]
+        REST["Trading REST API"]
+        WS["WebSocket / Event Stream"]
+        CHAT["AI / Natural Language API"]
+    end
+
+    subgraph TRADING["LOW-LATENCY DETERMINISTIC TRADING PLANE"]
+
+        MD["Market Data Gateway"]
+
+        MDP["Market Data Processor"]
+        NORMALIZER["Tick Normalizer"]
+        L2["Order Book / L2 Builder"]
+
+        OM["Order Management"]
+        RISK["Risk & Margin Engine"]
+        BOOK["Simulated Order Book"]
+        MATCH["Matching & Execution Engine"]
+
+        TRADE["Trade Engine"]
+        POSITION["Position Engine"]
+        CHARGES["Charges Engine"]
+        LEDGER["Ledger & Settlement"]
+
+        MIS["MIS Square-off Engine"]
+    end
+
+    subgraph EVENTS["EVENT / STREAMING LAYER"]
+        BUS["Event Bus"]
+        STREAM["Market / Trading Event Streams"]
+    end
+
+    subgraph DATA["CORE DATA"]
+        ORDDB[("Orders DB")]
+        TRADEDB[("Trades DB")]
+        POSDB[("Positions DB")]
+        HOLDDB[("Holdings DB")]
+        LEDGERDB[("Ledger DB")]
+        MARKETDB[("Market Data Store")]
+        AUDITDB[("Immutable Audit Log")]
+    end
+
+    subgraph AGENT["AGENTIC INTELLIGENCE PLANE"]
+
+        ORCH["Agent Orchestrator"]
+
+        ROUTER["Intent / Task Router"]
+
+        RESEARCH["Research Agent"]
+        NEWS["News Intelligence Agent"]
+        MARKET["Market Analysis Agent"]
+        PORTFOLIO["Portfolio Agent"]
+        RISKAGENT["Risk Agent"]
+        SCREENER["Stock Screener Agent"]
+        ALERT["Event Monitoring Agent"]
+        EXPLAIN["Trade Explanation Agent"]
+
+        MEMORY["Agent Memory"]
+        KB["Research Knowledge Base"]
+        RAG["RAG / Retrieval Engine"]
+
+        TOOL["Agent Tool Gateway"]
+    end
+
+    subgraph TOOLS["AGENT TOOLS"]
+
+        MARKETTOOL["Market Data Tool"]
+        FUND["Fundamental Data Tool"]
+        NEWSAPI["News Search Tool"]
+        FILINGS["Company Filings Tool"]
+        PORTTOOL["Portfolio Tool"]
+        BACKTEST["Backtest / Simulation Tool"]
+        CALC["Financial Calculator"]
+        EVENTTOOL["Event Calendar Tool"]
+        ORDERTOOL["Order API Tool"]
+    end
+
+    subgraph SAFETY["AGENT SAFETY & GOVERNANCE"]
+
+        POLICY["Policy Engine"]
+        PERMISSION["Permission Manager"]
+        APPROVAL["Human Approval Gateway"]
+        AGENTAUDIT["Agent Audit Log"]
+    end
+
+    subgraph OPS["PLATFORM SERVICES"]
+
+        CONFIG["Configuration"]
+        SCHED["Scheduler"]
+        MONITOR["Monitoring"]
+        ALERTING["Alerting"]
+        RECON["Reconciliation"]
+        BACKUP["Backup / Recovery"]
+    end
+
+    USER --> GW
+    USER --> CHAT
+
+    GW --> REST
+    GW --> WS
+    CHAT --> ORCH
+
+    REST --> OM
+
+    MD --> MDP
+    MDP --> NORMALIZER
+    NORMALIZER --> L2
+    L2 --> MATCH
+
+    OM --> RISK
+    RISK --> BOOK
+    BOOK --> MATCH
+
+    MATCH --> TRADE
+    TRADE --> POSITION
+    TRADE --> CHARGES
+    CHARGES --> LEDGER
+    POSITION --> LEDGER
+
+    MIS --> OM
+
+    MDP --> BUS
+    OM --> BUS
+    MATCH --> BUS
+    TRADE --> BUS
+    POSITION --> BUS
+    LEDGER --> BUS
+
+    BUS --> STREAM
+
+    OM --> ORDDB
+    TRADE --> TRADEDB
+    POSITION --> POSDB
+    POSITION --> HOLDDB
+    LEDGER --> LEDGERDB
+    MDP --> MARKETDB
+
+    BUS --> AUDITDB
+
+    STREAM --> ORCH
+
+    ORCH --> ROUTER
+
+    ROUTER --> RESEARCH
+    ROUTER --> NEWS
+    ROUTER --> MARKET
+    ROUTER --> PORTFOLIO
+    ROUTER --> RISKAGENT
+    ROUTER --> SCREENER
+    ROUTER --> ALERT
+    ROUTER --> EXPLAIN
+
+    RESEARCH --> RAG
+    NEWS --> RAG
+    MARKET --> RAG
+
+    RAG --> KB
+
+    RESEARCH --> TOOL
+    NEWS --> TOOL
+    MARKET --> TOOL
+    PORTFOLIO --> TOOL
+    RISKAGENT --> TOOL
+    SCREENER --> TOOL
+    ALERT --> TOOL
+    EXPLAIN --> TOOL
+
+    TOOL --> MARKETTOOL
+    TOOL --> FUND
+    TOOL --> NEWSAPI
+    TOOL --> FILINGS
+    TOOL --> PORTTOOL
+    TOOL --> BACKTEST
+    TOOL --> CALC
+    TOOL --> EVENTTOOL
+    TOOL --> ORDERTOOL
+
+    ORDERTOOL --> POLICY
+    POLICY --> PERMISSION
+    PERMISSION --> APPROVAL
+    APPROVAL --> REST
+
+    ORCH --> MEMORY
+    ORCH --> AGENTAUDIT
+
+    SCHED --> MIS
+    SCHED --> ALERT
+
+    MONITOR --> TRADING
+    RECON --> DATA
+    BACKUP --> DATA
+
+
+4. Why the Agent Must Not Be Inside the Trading Engine
+An LLM or autonomous agent should never be placed between:
+Market Tick
+     ↓
+Order Book
+     ↓
+Matching Engine
+     ↓
+Trade
+
+That would introduce unpredictable latency and nondeterministic behavior.
+For example, if a market order arrives while the market is moving:
+09:30:00.001   Market tick
+09:30:00.002   Order arrives
+09:30:00.003   Risk check
+09:30:00.004   Matching
+09:30:00.005   Fill
+
+The matching engine should not wait for an AI model.
+Instead:
+                        ┌───────────────┐
+Market Data ────────────►│ Trading Engine│──────────► Trade
+                         └───────┬───────┘
+                                 │
+                                 │ Events
+                                 ▼
+                         ┌───────────────┐
+                         │ Agentic Layer │
+                         └───────────────┘
+                                 │
+                 ┌───────────────┼───────────────┐
+                 ▼               ▼               ▼
+             Research        Analysis       Recommendation
+
+The agent reacts to the system.
+The system does not wait for the agent.
+
+5. Agentic Layer Responsibilities
+The agentic layer can contain multiple specialized agents instead of one giant agent.
+The recommended architecture is:
+                      Agent Orchestrator
+                              │
+                 ┌────────────┼────────────┐
+                 │            │            │
+                 ▼            ▼            ▼
+           Research       Portfolio      Market
+             Agent          Agent        Analyst
+                 │            │            │
+                 └────────────┼────────────┘
+                              │
+                              ▼
+                       Risk / Decision
+                          Agent
+                              │
+                              ▼
+                       Recommendation
+
+The orchestrator decides which specialist should handle a task.
+For example:
+User:
+“Why did my portfolio fall today?”
+The orchestrator can execute:
+Portfolio Agent
+      ↓
+Read today's P&L
+      ↓
+Identify largest contributors
+      ↓
+Market Agent
+      ↓
+Analyze price movements
+      ↓
+News Agent
+      ↓
+Search relevant company/sector news
+      ↓
+Risk Agent
+      ↓
+Analyze concentration/exposure
+      ↓
+Explanation Agent
+      ↓
+Generate final explanation
+
+
+6. Research Agent
+The Research Agent is responsible for deep research on securities.
+It can answer questions such as:
+“Research Reliance for me.”
+“What are the major risks in TCS?”
+“Compare HDFC Bank and ICICI Bank.”
+“Why has this stock fallen over the last month?”
+The agent can combine:
+Price Data
++
+Volume
++
+Fundamentals
++
+Company Filings
++
+News
++
+Corporate Actions
++
+Historical Data
++
+Sector Data
+
+The output should not simply be an LLM opinion.
+It should contain evidence.
+For example:
+Research Question
+       ↓
+Retrieve Data
+       ↓
+Retrieve Relevant Documents
+       ↓
+Analyze
+       ↓
+Cross-check
+       ↓
+Generate Findings
+       ↓
+Attach Sources
+       ↓
+Confidence / Freshness
+       ↓
+Research Report
+
+Each research result should maintain:
+source
+timestamp
+data freshness
+retrieval time
+claim
+supporting evidence
+confidence
+
+
+7. News Intelligence Agent
+The News Agent continuously processes relevant market news.
+Its job is not merely to show headlines.
+It should understand:
+Headline
+   ↓
+Entity Extraction
+   ↓
+Company / Sector Mapping
+   ↓
+Event Classification
+   ↓
+Sentiment / Impact
+   ↓
+Relevance
+   ↓
+Portfolio Exposure
+   ↓
+Alert
+
+For example:
+News:
+"Company X receives major regulatory approval"
+
+        ↓
+
+Entity:
+Company X
+
+        ↓
+
+Event:
+Regulatory Approval
+
+        ↓
+
+Affected:
+Company X
+Sector
+Competitors
+Suppliers
+
+        ↓
+
+Portfolio:
+User owns Company X
+
+        ↓
+
+Action:
+Generate portfolio alert
+
+News should also be deduplicated.
+Ten websites reporting the same event should not create ten separate alerts.
+
+8. Portfolio Intelligence Agent
+The Portfolio Agent reads the portfolio state generated by the deterministic engine.
+It should never calculate authoritative balances itself.
+The source of truth remains:
+Position Engine
+Ledger
+Trade Database
+
+The agent only queries them.
+It can calculate higher-level intelligence such as:
+Portfolio concentration
+Sector concentration
+Largest winners
+Largest losers
+Drawdown
+Exposure
+Margin utilization
+Cash utilization
+Unrealised P&L
+Realised P&L
+Risk concentration
+Correlation
+Diversification
+
+Example:
+Portfolio
+   │
+   ├── Position Data
+   ├── Holdings
+   ├── Cash
+   ├── Margin
+   └── P&L
+          │
+          ▼
+   Portfolio Agent
+          │
+          ├── Concentration Analysis
+          ├── Risk Analysis
+          ├── Performance Analysis
+          └── Event Exposure
+          │
+          ▼
+       Insights
+
+
+9. Recommendation Engine
+The recommendation system should be separated from actual order execution.
+The architecture should be:
+Market Data
+    +
+Research
+    +
+News
+    +
+Portfolio
+    +
+Risk
+    +
+User Preferences
+        │
+        ▼
+Recommendation Engine
+        │
+        ▼
+Recommendation
+        │
+        ├── Thesis
+        ├── Supporting Data
+        ├── Risks
+        ├── Confidence
+        ├── Expected Scenario
+        └── Expiry
+
+A recommendation should look conceptually like:
+Recommendation ID: REC-123
+
+Instrument: XYZ
+
+Direction: WATCH / BUY / SELL
+
+Reason:
+...
+
+Evidence:
+...
+
+Risks:
+...
+
+Market Conditions:
+...
+
+Generated:
+10:31:22
+
+Expires:
+12:00:00
+
+Confidence:
+0.72
+
+The recommendation is not a trade.
+If the user decides to trade:
+Recommendation
+      ↓
+User / Policy Approval
+      ↓
+Normal Order API
+      ↓
+Risk Engine
+      ↓
+Matching Engine
+
+
+10. Agentic Screening
+The Screener Agent can turn natural language into structured screening queries.
+For example:
+“Find liquid stocks that have fallen significantly but are showing increasing volume.”
+The agent converts that into something like:
+Universe:
+NSE Equities
+
+Filters:
+
+Liquidity > X
+
+Price decline > Y%
+
+Volume change > Z%
+
+Market cap > A
+
+Data period = B
+
+Then the deterministic analytics engine performs the actual calculation.
+This is important.
+The LLM should interpret the request.
+The quantitative engine should calculate the numbers.
+Natural Language
+       ↓
+LLM
+       ↓
+Structured Query
+       ↓
+Quantitative Screening Engine
+       ↓
+Results
+       ↓
+LLM
+       ↓
+Explanation
+
+
+11. What-If / Simulation Agent
+This is one of the strongest features you can add.
+A user could ask:
+“What happens to my portfolio if Reliance falls 8%?”
+or:
+“What if I buy 500 shares?”
+or:
+“What will my margin utilization look like?”
+The agent should create a hypothetical scenario.
+User Question
+      ↓
+Agent
+      ↓
+Scenario Builder
+      ↓
+Simulation Engine
+      ↓
+Position / Margin / P&L Calculation
+      ↓
+Result
+      ↓
+Agent Explanation
+
+Critically, the simulation should use the same financial calculation components as the real engine wherever possible.
+Do not create separate formulas for the agent.
+
+12. Agent Tool Gateway
+Agents should never directly access databases or arbitrary APIs.
+Instead they use controlled tools.
+Agent
+  ↓
+Tool Gateway
+  ↓
+Permission Check
+  ↓
+Tool
+  ↓
+Validated Result
+
+Examples:
+get_market_price()
+get_market_depth()
+get_historical_prices()
+get_company_fundamentals()
+search_news()
+get_portfolio()
+get_positions()
+get_orders()
+get_trades()
+get_ledger()
+calculate_margin()
+simulate_order()
+run_backtest()
+get_corporate_actions()
+get_market_calendar()
+
+This gives you a clean security boundary.
+
+13. Read Tools vs Write Tools
+This distinction is extremely important.
+Most agent tools should be read-only.
+READ TOOLS
+
+Market data
+Portfolio
+Positions
+Orders
+Trades
+Ledger
+Research
+News
+Fundamentals
+Historical data
+
+Write operations should be heavily restricted.
+WRITE TOOLS
+
+Place order
+Modify order
+Cancel order
+Square-off
+
+A write operation must follow:
+Agent
+  ↓
+Intent
+  ↓
+Policy Engine
+  ↓
+Permission Check
+  ↓
+Risk Engine
+  ↓
+Optional Human Approval
+  ↓
+Existing Order API
+  ↓
+Trading Engine
+
+The agent never gets a privileged “execute trade” backdoor.
+
+14. Agent Safety Architecture
+The agentic layer should have its own policy system.
+flowchart LR
+
+    A["Agent"] --> I["Action Intent"]
+
+    I --> P["Policy Engine"]
+
+    P --> C{"Allowed?"}
+
+    C -->|No| D["Reject + Explain"]
+    C -->|Yes| R["Risk Engine"]
+
+    R --> M{"Margin / Risk OK?"}
+
+    M -->|No| X["Reject"]
+    M -->|Yes| H{"Approval Required?"}
+
+    H -->|Yes| U["User Approval"]
+    H -->|No| API["Normal Order API"]
+
+    U --> API
+
+    API --> MATCH["Matching Engine"]
+
+Policies could include:
+Maximum order value
+Maximum position size
+Maximum daily loss
+Maximum leverage
+Allowed instruments
+Allowed order types
+Maximum number of orders
+Human approval requirement
+Trading hours
+Agent permissions
+
+
+15. Event-Driven Agent Architecture
+The agentic system should consume events from the trading engine.
+For example:
+TradeExecuted
+OrderRejected
+PositionChanged
+MarginChanged
+LargePriceMove
+NewsReceived
+MarketOpen
+MarketClose
+MISWarning
+MISSquareOff
+
+These events go into the event bus.
+                    Event Bus
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+        ▼                ▼                ▼
+ Portfolio Agent    Risk Agent       Alert Agent
+        │                │                │
+        ▼                ▼                ▼
+ Portfolio Insight   Risk Alert       Notification
+
+This allows the agentic system to be reactive rather than requiring constant polling.
+
+16. Intelligent Event Monitoring
+The Event Monitoring Agent can continuously watch the system.
+Examples:
+Stock moves > 5%
+Volume suddenly spikes
+Position loses X%
+Margin utilization > X%
+News arrives for held stock
+Corporate action announced
+Order repeatedly rejected
+Portfolio concentration increases
+Unrealised loss crosses threshold
+
+The agent then decides whether the event is meaningful.
+Example:
+Price Alert
+     ↓
+"Stock moved 6%"
+     ↓
+Agent investigates
+     ↓
+News search
+     ↓
+Volume analysis
+     ↓
+Sector analysis
+     ↓
+Portfolio exposure
+     ↓
+Generate alert only if meaningful
+
+This avoids flooding the user with useless notifications.
+
+17. Agent Memory
+Agent memory should be separated from financial state.
+The trading engine owns:
+Cash
+Positions
+Orders
+Trades
+Holdings
+Ledger
+Margin
+
+The agent system owns:
+User preferences
+Research history
+Previous questions
+Watchlists
+Saved research
+Recommendation history
+Alert preferences
+
+The agent must never modify authoritative financial state through memory.
+
+18. Research Knowledge Base
+The system can maintain a knowledge layer containing:
+Company filings
+Annual reports
+Investor presentations
+Exchange circulars
+Corporate announcements
+Research documents
+Historical news
+Market rules
+Charge tables
+Margin documentation
+Internal documentation
+
+The retrieval architecture:
+Documents
+    ↓
+Ingestion
+    ↓
+Parsing
+    ↓
+Chunking
+    ↓
+Metadata
+    ↓
+Embeddings / Index
+    ↓
+Knowledge Base
+    ↓
+Retriever
+    ↓
+Agent
+
+Every document should have metadata such as:
+company
+document type
+publication date
+source
+URL
+timestamp
+market relevance
+validity period
+
+
+19. RAG Architecture
+For research questions:
+User
+ ↓
+Intent Router
+ ↓
+Research Agent
+ ↓
+Query Understanding
+ ↓
+Hybrid Retrieval
+ ├── Vector Search
+ ├── Keyword Search
+ └── Structured Database
+ ↓
+Re-ranking
+ ↓
+Relevant Evidence
+ ↓
+LLM Reasoning
+ ↓
+Cited Answer
+
+The agent should distinguish between:
+FACT
+INFERENCE
+OPINION
+SCENARIO
+
+For example:
+FACT:
+Revenue increased 12%.
+
+INFERENCE:
+This may indicate improving demand.
+
+SCENARIO:
+If this trend continues...
+
+OPINION:
+This could be viewed positively.
+
+That makes the research system much more trustworthy.
+
+20. Low-Latency Trading Architecture
+The core engine should remain optimized independently.
+Market Feed
+    ↓
+Feed Handler
+    ↓
+Normalizer
+    ↓
+Sequencer
+    ↓
+Market State
+    ↓
+Order Book
+    ↓
+Matching Engine
+    ↓
+Trade
+
+Avoid putting:
+LLM
+HTTP research API
+Vector DB
+News API
+Agent planner
+External web request
+
+inside this path.
+The hot path should preferably operate primarily from memory and local state.
+
+21. Market Data Reliability
+The feed processor needs to handle:
+Out-of-order ticks
+Duplicate ticks
+Missing ticks
+Feed disconnects
+Reconnects
+Bursts
+Sequence gaps
+Timestamp inconsistencies
+
+A good architecture is:
+Raw Feed
+   ↓
+Feed Handler
+   ↓
+Sequence Validator
+   ↓
+Duplicate Detector
+   ↓
+Timestamp Validator
+   ↓
+Gap Detector
+   ↓
+Normalizer
+   ↓
+Market State
+
+The raw tick should also be retained for audit/replay.
+
+22. Deterministic Replay
+One of the strongest engineering features for this project is replay.
+Store:
+Market events
+Order events
+Configuration versions
+Risk decisions
+Trade events
+
+Then you should be able to reconstruct:
+System State @ T
+
+from:
+Initial State
++
+Event Stream[0...T]
+
+This gives you:
+Crash Recovery
+Debugging
+Backtesting
+Audit
+Reconciliation
+Bug Reproduction
+
+
+23. Event Sourcing
+A particularly strong architecture for the financial parts is event-oriented accounting.
+For example:
+ORDER_ACCEPTED
+ORDER_PARTIALLY_FILLED
+TRADE_EXECUTED
+CHARGE_APPLIED
+POSITION_UPDATED
+MARGIN_RESERVED
+MARGIN_RELEASED
+CASH_DEBITED
+CASH_CREDITED
+
+These events become the audit trail.
+Then derived state can be constructed:
+Events
+  ↓
+Position Projection
+  ↓
+Position State
+
+Events
+  ↓
+Ledger Projection
+  ↓
+Cash State
+
+Events
+  ↓
+Order Projection
+  ↓
+Order State
+
+The event log becomes the historical truth while projections provide fast reads.
+
+24. Financial Ledger
+Every financial movement should create a ledger entry.
+Conceptually:
+Trade
+  ↓
+Charges Calculation
+  ↓
+Ledger Entries
+
+For example:
+BUY ₹100,000
+Brokerage ₹20
+STT ₹X
+Exchange Charges ₹Y
+GST ₹Z
+Stamp Duty ₹A
+--------------------------------
+Total Cash Impact
+
+Never simply update:
+balance -= total
+
+without recording why.
+Instead:
+LedgerEntry {
+    id
+    timestamp
+    account_id
+    reference_type
+    reference_id
+    debit
+    credit
+    amount
+    component
+    description
+}
+
+Then the balance can always be reconciled.
+
+25. Traceability Requirement
+The system should support this chain:
+User Request
+     ↓
+Order ID
+     ↓
+Order Events
+     ↓
+Trade ID
+     ↓
+Execution Price / Quantity
+     ↓
+Charges
+     ↓
+Ledger Entries
+     ↓
+Position Change
+     ↓
+Realised / Unrealised P&L
+
+For example:
+ORDER-123
+   │
+   ├── TRADE-991
+   │     ├── 400 shares @ ₹250
+   │     ├── Brokerage
+   │     ├── STT
+   │     ├── Exchange Fee
+   │     ├── GST
+   │     └── Stamp Duty
+   │
+   ├── Position Update
+   │
+   └── Ledger Entries
+
+This is what makes the system auditable.
+
+26. Agent Auditability
+The same traceability should exist for agents.
+Every agent action should record:
+agent_id
+task_id
+user_id
+timestamp
+input
+tools_used
+tool_arguments
+tool_results
+retrieved_documents
+model/version
+reasoning summary
+recommendation
+confidence
+policy decision
+approval
+final action
+
+Do not store hidden chain-of-thought.
+Instead store an auditable decision summary:
+Decision:
+"Recommended WATCH"
+
+Evidence:
+3 relevant sources
+
+Risk:
+High volatility
+
+Reason:
+...
+
+Policy:
+Allowed
+
+Action:
+No order placed
+
+
+27. Agent Observability
+You should monitor the agents separately from the trading engine.
+Trading metrics:
+Order latency
+Matching latency
+Tick processing latency
+Orders/sec
+Trades/sec
+Feed lag
+Sequence gaps
+Risk rejection rate
+
+Agent metrics:
+Agent latency
+Tool calls/request
+Token usage
+Research retrieval latency
+Recommendation count
+Recommendation acceptance
+Tool failure rate
+Hallucination/error feedback
+Alert precision
+
+Most importantly, an agent outage must not affect trading.
+Agent DOWN
+     │
+     ▼
+Trading Engine
+     │
+     ▼
+CONTINUES OPERATING
+
+
+28. Failure Isolation
+The architecture should intentionally tolerate:
+News API DOWN
+Research Agent DOWN
+LLM DOWN
+Vector DB DOWN
+Agent Orchestrator DOWN
+
+The following must continue:
+Market Feed
+Orders
+Risk
+Matching
+Trades
+Positions
+Ledger
+MIS Square-off
+
+This is a major point to highlight during the hackathon/project presentation.
+
+29. MIS Square-Off
+The scheduled square-off is part of the deterministic trading plane.
+At 15:20:
+Scheduler
+   ↓
+MIS Square-off Job
+   ↓
+Get all open MIS positions
+   ↓
+Generate closing orders
+   ↓
+Risk validation
+   ↓
+Matching Engine
+   ↓
+Trades
+   ↓
+Charges
+   ↓
+Position = 0
+   ↓
+Ledger
+
+Do not delegate this to an AI agent.
+An agent may explain:
+“Your MIS position will be squared off at 15:20.”
+But the actual square-off must be deterministic.
+
+30. Recommendation Lifecycle
+Every recommendation should have a lifecycle.
+CREATED
+   ↓
+VALIDATED
+   ↓
+PUBLISHED
+   ↓
+WATCHED
+   ↓
+EXPIRED
+
+If converted into an order:
+RECOMMENDATION
+      ↓
+USER APPROVAL
+      ↓
+ORDER REQUEST
+      ↓
+RISK ENGINE
+      ↓
+ORDER BOOK
+      ↓
+MATCH
+
+This lets you measure recommendation quality separately from trading execution.
+
+31. Agentic Backtesting
+Another strong feature is allowing agents to use the simulation engine.
+For example:
+“Test this strategy over the last 2 years.”
+The architecture becomes:
+Agent
+  ↓
+Strategy Interpretation
+  ↓
+Structured Strategy
+  ↓
+Backtest Engine
+  ↓
+Historical Market Data
+  ↓
+Simulated Trading Engine
+  ↓
+Trades
+  ↓
+P&L
+  ↓
+Risk Metrics
+  ↓
+Agent Explanation
+
+The agent should not invent backtest results.
+The simulation engine generates them.
+
+32. Natural Language Trading Assistant
+The user can interact with the platform conversationally.
+Examples:
+"Show my biggest losing positions."
+
+"Why did my portfolio lose money today?"
+
+"Research Infosys."
+
+"Find stocks with unusual volume."
+
+"What news affected my portfolio today?"
+
+"What is my current margin utilization?"
+
+"Simulate buying 500 shares of XYZ."
+
+"Compare my current exposure with yesterday."
+
+"Explain this rejected order."
+
+"Show all trades executed today."
+
+The assistant translates natural language into tool calls.
+Natural Language
+       ↓
+Intent Router
+       ↓
+Tool Selection
+       ↓
+Tool Execution
+       ↓
+Data
+       ↓
+Agent Reasoning
+       ↓
+Answer
+
+
+33. Agent-to-Engine Boundary
+This boundary should be treated almost like a firewall.
+            AGENTIC WORLD
+────────────────────────────────────
+
+LLM
+Agents
+Research
+News
+Recommendations
+Natural Language
+RAG
+Memory
+
+              │
+              │
+              ▼
+
+        TOOL / POLICY GATEWAY
+
+              │
+              ▼
+
+────────────────────────────────────
+          TRADING WORLD
+
+API
+Risk
+Margin
+Order Book
+Matching
+Trades
+Positions
+Ledger
+Settlement
+
+No agent should bypass the gateway.
+
+34. Recommended Service Architecture
+A practical implementation could use these services:
+api-gateway
+order-service
+risk-service
+market-data-service
+order-book-service
+matching-engine
+trade-service
+position-service
+ledger-service
+charges-service
+margin-service
+mis-squareoff-service
+
+event-bus
+
+agent-orchestrator
+research-agent
+news-agent
+portfolio-agent
+market-agent
+risk-agent
+screening-agent
+alert-agent
+
+knowledge-service
+retrieval-service
+tool-gateway
+policy-service
+
+notification-service
+audit-service
+reconciliation-service
+
+For a hackathon, these do not necessarily need to be physically deployed as separate microservices.
+You can implement them as modular components inside a modular monolith first.
+That is often the better engineering choice.
+
+35. Recommended Deployment Architecture
+                   Load Balancer
+                         │
+                ┌────────┴────────┐
+                │                 │
+             API Pods          WebSocket
+                │
+                ▼
+          Trading Application
+                │
+       ┌────────┼─────────┐
+       │        │         │
+       ▼        ▼         ▼
+     Redis    Database   Event Bus
+       │        │         │
+       │        │         └─────────────┐
+       │        │                       │
+       ▼        ▼                       ▼
+  Hot State  Durable State        Agent Workers
+                                      │
+                          ┌───────────┼───────────┐
+                          ▼           ▼           ▼
+                       Research    News      Portfolio
+                          │           │           │
+                          └───────────┼───────────┘
+                                      ▼
+                                  LLM / RAG
+
+
+36. Storage Strategy
+Use different storage systems for different workloads.
+Relational DB
+    ↓
+Orders
+Trades
+Positions
+Holdings
+Ledger
+Users
+Configuration
+
+Time-Series / Market Store
+    ↓
+Ticks
+OHLC
+Depth
+Market Events
+
+Redis / In-Memory
+    ↓
+Current order book
+Latest prices
+Current margin
+Session state
+Hot portfolio state
+
+Object Storage
+    ↓
+Raw market data
+News documents
+Reports
+Filings
+
+Vector Database
+    ↓
+Research documents
+News
+Filings
+Knowledge base
+
+Immutable Event Store
+    ↓
+Audit events
+Trading events
+Agent events
+
+
+37. Core Data Model
+The major entities should be:
+User
+Account
+Instrument
+
+Order
+OrderEvent
+
+Trade
+TradeLeg
+
+Position
+Holding
+
+LedgerEntry
+Charge
+
+MarketTick
+MarketDepth
+
+MarginSnapshot
+
+Recommendation
+ResearchReport
+NewsEvent
+
+AgentTask
+AgentToolCall
+AgentDecision
+
+AuditEvent
+
+The important relationship is:
+Account
+  │
+  ├── Orders
+  │      │
+  │      └── Trades
+  │              │
+  │              └── Positions
+  │
+  ├── Holdings
+  │
+  └── Ledger
+
+
+38. Unified Event Model
+Everything should generate structured events.
+Example:
+{
+    event_id,
+    event_type,
+    timestamp,
+    entity_type,
+    entity_id,
+    account_id,
+    source,
+    sequence,
+    payload,
+    schema_version
+}
+
+Possible event types:
+MARKET_TICK
+MARKET_DEPTH_UPDATED
+
+ORDER_CREATED
+ORDER_VALIDATED
+ORDER_REJECTED
+ORDER_MODIFIED
+ORDER_CANCELLED
+
+ORDER_TRIGGERED
+
+TRADE_EXECUTED
+TRADE_PARTIALLY_EXECUTED
+
+POSITION_UPDATED
+HOLDING_UPDATED
+
+MARGIN_RESERVED
+MARGIN_RELEASED
+
+LEDGER_DEBIT
+LEDGER_CREDIT
+
+CHARGE_APPLIED
+
+MIS_SQUAREOFF_STARTED
+MIS_SQUAREOFF_COMPLETED
+
+NEWS_RECEIVED
+
+AGENT_TASK_CREATED
+AGENT_RECOMMENDATION_CREATED
+AGENT_ALERT_CREATED
+
+
+39. Agent Event Flow
+Example:
+NEWS_RECEIVED
+      ↓
+Event Bus
+      ↓
+News Agent
+      ↓
+Entity Detection
+      ↓
+Impact Analysis
+      ↓
+Portfolio Agent
+      ↓
+Does user hold affected security?
+      ↓
+YES
+      ↓
+Risk Agent
+      ↓
+Calculate exposure
+      ↓
+Alert Agent
+      ↓
+Create Alert
+      ↓
+Notification
+
+This makes the system genuinely agentic rather than simply adding a chatbot.
+
+40. Recommended Agent Features for the Project
+The feature set can be divided into four levels.
+Level 1 — Intelligence
+Natural language portfolio queries
+Market research
+News summarization
+Stock research
+Portfolio explanation
+Trade explanation
+
+Level 2 — Proactive Intelligence
+Price alerts
+News alerts
+Portfolio risk alerts
+Unusual volume detection
+Margin alerts
+Corporate action alerts
+Event monitoring
+
+Level 3 — Analytical Intelligence
+What-if analysis
+Scenario simulation
+Stock screening
+Portfolio optimization suggestions
+Strategy backtesting
+Risk analysis
+Performance attribution
+
+Level 4 — Controlled Agentic Actions
+Create watchlist
+Create alerts
+Run research
+Run simulations
+Generate trade proposal
+Prepare order
+Request approval
+Submit approved order through normal API
+
+The fourth level should remain permission-controlled.
+
+41. Things the Agent Should NOT Do
+The agent should never independently:
+Modify ledger balances
+Modify positions
+Change executed trade prices
+Bypass margin checks
+Bypass order validation
+Directly mutate database state
+Override exchange rules
+Change charges
+Change matching logic
+Force a trade
+Invent market data
+Invent research sources
+
+All authoritative financial state belongs to the deterministic engine.
+
+42. Example End-to-End Scenario
+Suppose the user asks:
+“Why is my portfolio down today and should I be concerned?”
+The system executes:
+User
+ │
+ ▼
+AI Gateway
+ │
+ ▼
+Intent Router
+ │
+ ▼
+Portfolio Agent
+ │
+ ├── get_positions()
+ ├── get_today_pnl()
+ └── get_exposure()
+ │
+ ▼
+Identify major losers
+ │
+ ▼
+Market Agent
+ │
+ ├── get_price_change()
+ ├── get_volume()
+ └── get_sector_performance()
+ │
+ ▼
+News Agent
+ │
+ ├── search_news()
+ └── classify_events()
+ │
+ ▼
+Risk Agent
+ │
+ ├── concentration
+ ├── volatility
+ └── exposure
+ │
+ ▼
+Explanation Agent
+ │
+ ▼
+User
+
+No order is placed.
+The result is purely informational.
+
+43. Example Agentic Trading Scenario
+Suppose the user says:
+“Research XYZ and, if you think it is attractive, prepare a buy order for me.”
+The system should NOT immediately trade.
+Instead:
+User
+ ↓
+Research Agent
+ ↓
+Fundamentals
++
+News
++
+Market Data
++
+Risk
+ ↓
+Recommendation
+ ↓
+"XYZ looks attractive"
+ ↓
+Generate Proposed Order
+ ↓
+Policy Engine
+ ↓
+User Approval
+ ↓
+Order API
+ ↓
+Risk Engine
+ ↓
+Matching Engine
+
+The agent has intelligence.
+The trading engine retains authority.
+
+44. Crash Recovery
+The system should survive crashes without losing financial state.
+               Crash
+                  ↓
+        ┌─────────────────┐
+        │ Event Log        │
+        │ Durable Database │
+        └────────┬────────┘
+                 ↓
+           Replay Events
+                 ↓
+       Rebuild Current State
+                 ↓
+       Reconcile Positions
+                 ↓
+       Reconcile Ledger
+                 ↓
+       Resume Trading
+
+The agentic layer can independently recover from its own task/event history.
+
+45. Reconciliation
+A reconciliation service should continuously check:
+Orders
+     ↕
+Trades
+
+Trades
+     ↕
+Positions
+
+Trades + Charges
+     ↕
+Ledger
+
+Market State
+     ↕
+Positions / P&L
+
+Any inconsistency becomes an alert.
+For example:
+Expected Cash
+     ≠
+Ledger Cash
+
+should immediately produce:
+RECONCILIATION_FAILURE
+
+
+46. Testing Architecture
+The project should have deterministic tests around the engine and scenario tests around agents.
+Core engine tests:
+Market order
+Limit order
+SL order
+SL-M order
+Partial fills
+Order modification
+Cancellation
+Insufficient margin
+MIS leverage
+MIS square-off
+Charges
+P&L
+Duplicate ticks
+Out-of-order ticks
+Feed gaps
+Crash recovery
+Ledger reconciliation
+
+Agent tests:
+Correct tool selection
+Correct retrieval
+Source attribution
+No hallucinated numbers
+Portfolio analysis
+News relevance
+Recommendation consistency
+Policy enforcement
+Unauthorized action rejection
+Agent failure isolation
+
+
+47. Performance Targets
+The exact values can be tuned based on the challenge environment, but conceptually the target should be:
+Trading path:
+Very low latency
+Deterministic
+No LLM dependency
+
+Agent path:
+Asynchronous
+Scalable
+Fault tolerant
+Eventually consistent where appropriate
+
+The architecture should optimize for:
+Trading correctness > trading intelligence
+
+and:
+Financial accuracy > agent convenience
+
+
+48. The Final Architecture
+The whole project can be summarized as five major layers.
+┌──────────────────────────────────────────────────────────────┐
+│                    USER EXPERIENCE                           │
+│                                                              │
+│ Dashboard • Trading UI • AI Assistant • Alerts • Reports    │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    AGENTIC INTELLIGENCE                      │
+│                                                              │
+│ Research • News • Portfolio • Risk • Screener • Alerts      │
+│ Recommendations • What-if • Backtesting • AI Assistant     │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+                        Tool / Policy Gateway
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    TRADING API                               │
+│                                                              │
+│ Orders • Positions • Holdings • Margin • P&L • Ledger       │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│               DETERMINISTIC TRADING ENGINE                   │
+│                                                              │
+│ Market Data → Risk → Order Book → Matching → Trade          │
+│                 → Position → Charges → Ledger                │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│                 EVENT + DATA FOUNDATION                      │
+│                                                              │
+│ Event Bus • Event Store • SQL • Market DB • Cache • RAG      │
+│ Audit Log • Reconciliation • Backup • Monitoring             │
+└──────────────────────────────────────────────────────────────┘
+
+
+49. The One-Line Architecture Pitch
+The strongest way to explain the project to judges is:
+“We built a deterministic exchange simulator as the source of truth, and placed an event-driven agentic intelligence layer on top of it that can research, monitor, reason, simulate and recommend without ever compromising the low-latency trading path.”
+That distinction makes the architecture much stronger than simply adding an LLM chatbot to a trading application.
+50. Final Module Map
+The final project can therefore be presented as:
+PS-05 PAPER TRADING PLATFORM
+│
+├── 1. MARKET DATA ENGINE
+│   ├── Feed Handler
+│   ├── Tick Normalizer
+│   ├── Sequence Manager
+│   ├── L2 Builder
+│   └── Market State
+│
+├── 2. TRADING ENGINE
+│   ├── Order Management
+│   ├── Risk Engine
+│   ├── Margin Engine
+│   ├── Order Book
+│   ├── Matching Engine
+│   └── Execution Engine
+│
+├── 3. PORTFOLIO ENGINE
+│   ├── Positions
+│   ├── Holdings
+│   ├── Average Price
+│   ├── Realised P&L
+│   └── Unrealised P&L
+│
+├── 4. FINANCIAL ENGINE
+│   ├── Charges
+│   ├── Brokerage
+│   ├── STT
+│   ├── Exchange Fees
+│   ├── GST
+│   ├── Stamp Duty
+│   └── Ledger
+│
+├── 5. SETTLEMENT ENGINE
+│   ├── CNC
+│   ├── MIS
+│   ├── MTM
+│   └── Auto Square-off
+│
+├── 6. EVENT PLATFORM
+│   ├── Event Bus
+│   ├── Event Store
+│   ├── Replay
+│   └── Audit
+│
+├── 7. AGENTIC INTELLIGENCE
+│   ├── Agent Orchestrator
+│   ├── Research Agent
+│   ├── News Agent
+│   ├── Market Agent
+│   ├── Portfolio Agent
+│   ├── Risk Agent
+│   ├── Screener Agent
+│   ├── Alert Agent
+│   └── Explanation Agent
+│
+├── 8. AGENT TOOLS
+│   ├── Market Data
+│   ├── Fundamentals
+│   ├── News
+│   ├── Filings
+│   ├── Portfolio
+│   ├── Backtesting
+│   ├── Simulation
+│   └── Order API
+│
+├── 9. AGENT GOVERNANCE
+│   ├── Policy Engine
+│   ├── Permissions
+│   ├── Approval Gateway
+│   └── Agent Audit
+│
+└── 10. PLATFORM
+    ├── API Gateway
+    ├── WebSocket
+    ├── Scheduler
+    ├── Monitoring
+    ├── Reconciliation
+    └── Backup / Recovery
+
+The key architectural rule is simple:
+Agents can think. The trading engine decides. The ledger remembers. The event bus connects everything.
+

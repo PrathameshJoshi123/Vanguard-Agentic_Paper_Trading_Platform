@@ -1,0 +1,12 @@
+PS-05: Paper Trading Engine
+Background : The challenge isn’t building a buy button or portfolio, but making simulated trading behave like a real exchange—ensuring correct order fills, reliable stop-losses, and full traceability of every rupee, even after a crash.
+Problem Statement : Build a paper trading engine that executes simulated orders using live market data like a real exchange, while ensuring every paisa is accurately tracked.
+Objective
+ Your system should:
+Market & limit orders: Support market and limit orders for delivery (CNC) on NSE equities, including placing, modifying and cancelling orders. Maintain holdings, average buy price, realised and unrealised P&L, and a cash ledger.
+Realistic fills: Support stop-loss (SL) and stop-loss market (SL-M) orders. Fills must use market depth, allowing partial fills when sufficient quantity is not available at the best price.
+Intraday trading: Support intraday (MIS) trading with leverage and margin as per the published margin table. Reject orders when margin is insufficient and automatically square off all open MIS positions at 15:20.
+Charges: Apply brokerage, STT, exchange fees, GST and stamp duty as per the published charges table, so every trade's net P&L matches a contract note.
+API: Implement the API contract shared at kickoff, through which the test harness drives the engine.
+Market feed: Handle real-world feed behaviour including out-of-order ticks, duplicate ticks, feed drops and tick bursts.
+Audit & accuracy: Ensure every rupee can be traced and that the engine maintains correct balances, positions and P&L throughout its operation.
