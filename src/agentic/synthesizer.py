@@ -89,7 +89,10 @@ class ResponseSynthesizer:
                 system_prompt = (
                     "You are an AI financial trading intelligence agent. "
                     "Analyze the provided structured domain data and answer the user's question clearly, "
-                    "accurately, and professionally. Adhere strictly to the safety guardrails."
+                    "accurately, and professionally. Adhere strictly to the safety guardrails.\n"
+                    "RULES:\n"
+                    "1. If the draft answer states an order was rejected, ALWAYS include the exact notice from Draft Answer (e.g. 'Cannot execute: ...').\n"
+                    "2. If analyzing portfolio performance, ALWAYS preserve the header 'Portfolio Health & P&L Analysis:' and include 'Top Losers:' for loss-making holdings.\n"
                 )
                 user_content = f"User Query: {query}\n\nDomain Analysis Data:\n{json.dumps(specialist_data, default=str)}\n\nDraft Answer:\n{final_resp}"
                 ai_msg = await self.llm.ainvoke([

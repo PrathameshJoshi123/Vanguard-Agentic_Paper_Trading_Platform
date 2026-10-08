@@ -3,6 +3,8 @@ from src.api.routers.portfolio import router as portfolio_router
 from src.api.routers.ledger import router as ledger_router
 from src.api.routers.margin import router as margin_router
 from src.api.routers.agent import router as agent_router
+from src.api.routers.simulation import router as simulation_router
+from src.api.routers.settlement import router as settlement_router
 
 __all__ = [
     "orders_router",
@@ -10,5 +12,7 @@ __all__ = [
     "ledger_router",
     "margin_router",
     "agent_router",
+    "simulation_router",
+    "settlement_router",
 ]
 

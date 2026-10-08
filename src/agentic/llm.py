@@ -15,7 +15,10 @@ class MockDeterministicLLM(BaseChatModel):
     """
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         last_msg = messages[-1].content if messages else ""
-        content = "Synthesized multi-agent response: analysis completed."
+        if "risk" in last_msg.lower() or "alert" in last_msg.lower() or "drawdown" in last_msg.lower():
+            content = "RISK ALERT: Sharp price drop detected in held position. Unrealized loss has breached safety threshold. Recommend reviewing stop-loss or reducing exposure to protect capital."
+        else:
+            content = "Synthesized multi-agent response: analysis completed."
         return AIMessage(content=content)
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):

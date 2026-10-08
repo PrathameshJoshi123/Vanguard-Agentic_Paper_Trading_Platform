@@ -58,7 +58,12 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
   - [x] Unified Gateway (`src/market_data/gateway.py`): Seamless switching between Live and Replay modes with subscriber dispatch.
   - [x] Market Depth Matcher & SL/SL-M Engine (`src/market_data/depth_matcher.py`): Bridges market depth updates into the engine, evaluates Stop-Loss triggers, and fills resting limit orders.
   - [x] Verification Suite: 39 tests all passing, including the Phase 3 Exit Criteria (50 historical RELIANCE ticks replay fills resting limit orders).
-- [ ] **Phase 4: MIS 15:20 Auto Square-Off & Daily Scheduler**
+- [x] **Phase 4 & 6: Proactive Features, Simulation & MIS Square-off** *(COMPLETED)*
+  - [x] **Autonomous Event-Driven Monitor** (`src/agentic/monitor/`): Background worker subscribed to in-memory Event Bus. Listens for `UNREALIZED_LOSS > 5%` or `TICK_PRICE_DROP > 3%`, throttled by a 60-second cooldown and 2% incremental re-trigger rule. Synthesizes an async LLM risk brief via Mistral AI and publishes `AGENT_ALERT` to the event bus / WebSocket stream.
+  - [x] **What-If Simulation Engine** (`src/simulation/`): Endpoints `POST /api/v1/agent/simulate` and `/agent/simulate`. In-memory snapshot cloning of active positions and account state, runs real MTM math, regulatory charges, and margin rules without mutating live trading state. Supports structured percentage shifts, target prices, hypothetical new trades, and natural-language queries (e.g., "What if TCS falls 6%?").
+  - [x] **Deterministic MIS Auto Square-off & Scheduler** (`src/settlement/mis_squareoff.py`, `src/scheduler/service.py`): Pure deterministic execution scanning open MIS positions and injecting closing market orders into the engine. Governed by APScheduler (`TradingSchedulerService`) configured for 15:20:00 IST with manual/simulation trigger capability.
+  - [x] **Exit Criteria Verified**: Fired simulated tick showing a 6% drop in a held stock; observed unprompted, structured `AGENT_ALERT` on WebSocket stream in < 2 seconds (`test_phase6_proactive_alert.py`).
+  - [x] **Verification Suite**: 68 tests passing across unit and integration suites (100% test pass rate).
 - [x] **Phase 5: Agentic Intelligence Plane & Tool Policy Gateway** *(COMPLETED)*
   - [x] Multi-Agent LangGraph Supervisor Network (`src/agentic/graph.py`, `src/agentic/supervisor.py`, `src/agentic/synthesizer.py`): Supervisor orchestrates intent routing to Research, Portfolio, and Trade Proposer specialist agents.
   - [x] Mistral LLM Integration & Mock Fallback (`src/agentic/llm.py`, `src/agentic/config.py`): Pluggable Mistral client (`langchain-mistralai`) with deterministic fallback for offline testing.
@@ -197,10 +202,41 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
 
 ---
 
-## 7. Guide for the Next Agent (Phase 3 Hand-off)
+## 8. Phase 6 Implementation Details (Proactive Features, Simulation & MIS Square-off)
 
-- **Completed Foundation**:
-  - Phase 1 (Deterministic In-Memory Order Book & Matching Engine) and Phase 2 (Financial Engine, Indian Regulatory Accounting, Risk & Margins, Positions & P&L, Double-Entry Ledger, Storage) are complete and verified with 31 passing tests.
-- **Next Target (Phase 3: Market Data Engine & L2 Live Ticks Ingestion)**:
-  - In `src/market_data/`: Implement `feed_handler.py`, `tick_normalizer.py`, and tick stream ingestion to update order book depth from external live NSE ticks.
-  - Handle out-of-order ticks, duplicate ticks, sequence gaps, feed disconnects, and tick bursts as specified in `ps.txt` and `plan.txt`.
+### Modules & Files Implemented
+
+1. **Deterministic MIS Auto Square-off Engine (`src/settlement/mis_squareoff.py`)**:
+   - `MISSquareOffManager`: Auditable settlement service executing zero-LLM liquidation of open MIS positions.
+   - Guaranteed liquidity: Injects counterparty resting maker liquidity at current market price if book depth is exhausted in paper mode.
+   - Injects closing market orders into `TradeExecutionService`, books realized P&L, records double-entry ledger entries, and reduces position to 0.
+   - Emits `MIS_SQUAREOFF_TRIGGERED` and `MIS_SQUAREOFF_COMPLETED` domain events.
+
+2. **Trading Scheduler Service (`src/scheduler/service.py`)**:
+   - `TradingSchedulerService`: APScheduler (`AsyncIOScheduler`) managing automated recurring market tasks.
+   - Configured with daily cron trigger for 15:20:00 IST (`Asia/Kolkata`).
+   - Supports manual and simulation-driven execution via `trigger_now()`.
+   - Wired directly into FastAPI lifespan in `src/api/app.py`.
+
+3. **What-If Simulation Engine (`src/simulation/`)**:
+   - `src/simulation/models.py`: DTOs for `SimulationRequest`, `PriceScenario`, `HypotheticalOrder`, `SimulatedPosition`, and `SimulationResult`.
+   - `src/simulation/engine.py` (`WhatIfSimulationEngine`): Creates in-memory snapshot clone of active positions and account state, runs exact MTM math, regulatory charges, and margin rules without mutating live trading state.
+   - Natural language parsing regex: Handles prompts like *"What if TCS falls 6%?"* or *"What happens if Reliance drops 8%?"*.
+   - REST Endpoints (`src/api/routers/simulation.py`): `POST /api/v1/agent/simulate` and `POST /agent/simulate`.
+
+4. **Autonomous Event-Driven Monitor (`src/agentic/monitor/`)**:
+   - `src/agentic/monitor/rules.py`:
+     - `RiskThresholdEvaluator`: Evaluates `UNREALIZED_LOSS > 5%` and `TICK_PRICE_DROP > 3%`.
+     - `DebounceTracker`: Enforces 60-second cooldown per symbol/condition with an immediate re-trigger rule for incremental drops $\ge 2\%$.
+   - `src/agentic/monitor/event_monitor.py` (`AutonomousEventMonitor`): Asynchronous background worker subscribed to in-memory Event Bus. Upon threshold breach, fires an async LLM prompt via Mistral AI (`ChatMistralAI` / fallback), synthesizes a crisp institutional risk brief, and publishes `DomainEvent(event_type="AGENT_ALERT")` to the Event Bus.
+   - Real-time Dispatch (`src/events/consumers/ws_broadcaster.py`): WebSocket worker automatically broadcasts `AGENT_ALERT` to connected WebSocket clients in real-time (< 50ms).
+
+5. **REST Endpoints Added**:
+   - `POST /api/v1/agent/simulate` & `POST /agent/simulate`: What-if simulation endpoint.
+   - `POST /settlement/mis-squareoff`: Endpoint to trigger deterministic MIS square-off.
+
+6. **Verification & Tests (68 Tests Passing Across Repository)**:
+   - `tests/unit/test_mis_squareoff.py`: 3 tests passing (long square-off, CNC left untouched, scheduler lifecycle).
+   - `tests/unit/test_simulation_engine.py`: 3 tests passing (percentage drop math, prompt parsing, hypothetical orders with charges).
+   - `tests/unit/test_event_monitor.py`: 3 tests passing (cooldown/debounce logic, threshold evaluator, autonomous alert publish).
+   - `tests/integration/test_phase6_proactive_alert.py`: **Phase Exit Criteria fully verified** (simulated 6% drop in held stock popped up structured alert on WebSocket in < 2 seconds).

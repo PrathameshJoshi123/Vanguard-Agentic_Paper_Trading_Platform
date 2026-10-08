@@ -73,6 +73,11 @@ class WebSocketBroadcasterWorker:
         if event.event_type == DomainEventType.TICK_RECEIVED:
             symbol = event.entity_id
             await self.manager.broadcast_tick(symbol, message)
+        elif event.event_type == DomainEventType.AGENT_ALERT:
+            if event.account_id:
+                await self.manager.broadcast_to_account(event.account_id, message)
+            else:
+                await self.manager.broadcast_all(message)
         elif event.account_id:
             await self.manager.broadcast_to_account(event.account_id, message)
         else:

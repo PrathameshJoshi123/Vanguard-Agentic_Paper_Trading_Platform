@@ -55,8 +55,16 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+_db_initialized = False
+
+
 async def init_db(custom_engine: AsyncEngine = None) -> None:
-    """Initializes tables in database."""
+    """Initializes tables in database idempotently."""
+    global _db_initialized
+    if _db_initialized and custom_engine is None:
+        return
     target_engine = custom_engine or engine
     async with target_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    if custom_engine is None:
+        _db_initialized = True
