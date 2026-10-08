@@ -16,6 +16,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { JudgeDemoBar } from "@/components/layout/JudgeDemoBar";
+
 export const metadata: Metadata = {
   title: "SYRUS-7 | Institutional Paper Trading Terminal",
   description:
@@ -45,6 +47,9 @@ export default function RootLayout({
                 {children}
               </main>
             </div>
+
+            {/* 4 Key Judge Demo Moments Floating Bar */}
+            <JudgeDemoBar />
           </AppStreamProvider>
         </TooltipProvider>
       </body>

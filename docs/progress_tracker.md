@@ -117,7 +117,16 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
     - `GET /ledger/t-accounts` & `GET /ledger/contract-notes` (`src/api/routers/ledger.py`): Delivers aggregated Double-Entry T-Accounts equilibrium and statutory charge summaries.
     - Enhanced `PATCH /orders/{order_id}` and `DELETE /orders/{order_id}` to resolve symbol automatically if omitted from query parameters.
   - [x] **Verification Suite**: 4 dedicated integration tests passing (`test_phase7d_portfolio_orders_ledger.py`), full Next.js production build (`npm run build`) succeeded with 0 errors across all routes.
-
+- [x] **Phase 7E: Agentic AI Copilot & Risk Alerts** *(COMPLETED)*
+  - [x] Full-width tabbed Copilot workspace (`/copilot`), Policy Approval / Rejection cards, live citations, What-If simulation sandbox, and unprompted risk alert stream.
+  - [x] 84 pytest tests passing (100% test pass rate), Next.js build clean with 0 errors.
+- [x] **Phase 7F: Integration & Polish & 4 Key Judge Demo Moments** *(COMPLETED)*
+  - [x] **Demo Moment 1 (500-Share Book Walk)**: Seeded 4-level ask depth, verified 500-share market order execution across levels, VWAP computation, 4 atomic trade legs, contract note taxes down to ₹0.01 paise, and balanced ledger.
+  - [x] **Demo Moment 2 (Crash Recovery Reload)**: Cold memory wipe simulated via `/system/crash-replay`, durable event log re-hydration verified with ₹0.00 discrepancy.
+  - [x] **Demo Moment 3 (Policy Gate Block vs Approval)**: Verified agent firewall blocks oversized order (> ₹50,000) with detailed statutory rationale, and routes compliant trades through human approval card for one-click execution.
+  - [x] **Demo Moment 4 (Autonomous Alert Drop)**: Market drop tick (-5.5%) simulated via `/system/simulate-drop`, verified unprompted `AGENT_ALERT` dispatch over WebSockets with Mistral AI brief in < 2 seconds.
+  - [x] **UI Judge Demo Control Bar** (`frontend/src/components/layout/JudgeDemoBar.tsx`): Persistent, floating control bar with one-click triggers for all 4 key demo moments.
+  - [x] **Verification Suite**: 88 pytest tests all passing (100% test pass rate across all unit and integration tests), Next.js 15 production build passing with 0 errors.
 
 ---
 

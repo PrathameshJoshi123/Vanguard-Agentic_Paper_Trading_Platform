@@ -88,23 +88,26 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
 
         // Update balance in store if returned
         if (res.account_balance !== undefined) {
+          const numBalance = Number(res.account_balance);
           setCashSummary({
             ...cashSummary,
-            cash_balance: res.account_balance,
-            available_cash: Math.max(0, res.account_balance - cashSummary.blocked_margin),
+            cash_balance: numBalance,
+            available_cash: Math.max(0, numBalance - cashSummary.blocked_margin),
           });
         }
 
         const tradesCount = res.trades ? res.trades.length : 0;
+        const avgFill = Number(res.order.average_fill_price || numPrice);
         const fillMsg =
           res.order.status === "FILLED"
-            ? `Filled ${res.order.filled_qty} shares @ ₹${(res.order.average_fill_price || numPrice).toFixed(2)}.`
+            ? `Filled ${res.order.filled_qty} shares @ ₹${(isNaN(avgFill) ? numPrice : avgFill).toFixed(2)}.`
             : `Order ${res.order.status} (${res.order.remaining_qty} resting on book).`;
 
+        const totalCharges = Number(res.total_charges || 0);
         setExecutionResult({
           type: "SUCCESS",
           message: `${side} Order Executed (${res.order.status})`,
-          details: `${fillMsg} ${tradesCount > 0 ? `(${tradesCount} matching trade legs)` : ""}. Regulatory Charges: ₹${(res.total_charges || 0).toFixed(2)}.`,
+          details: `${fillMsg} ${tradesCount > 0 ? `(${tradesCount} matching trade legs)` : ""}. Regulatory Charges: ₹${(isNaN(totalCharges) ? 0 : totalCharges).toFixed(2)}.`,
         });
       }
     } catch (err: unknown) {

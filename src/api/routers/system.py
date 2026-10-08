@@ -116,3 +116,72 @@ async def simulate_market_drop(
         "drop_percentage": req.drop_percentage,
         "message": f"Injected simulated {req.drop_percentage}% drop for {sym}. Autonomous monitor alerted.",
     }
+
+
+class SeedDemoBookRequest(BaseModel):
+    symbol: str = Field(default="RELIANCE", description="Symbol to seed order book depth for")
+
+
+@router.post("/seed-demo-book", status_code=status.HTTP_200_OK)
+def seed_demo_book(
+    req: SeedDemoBookRequest,
+    trade_service=Depends(get_recovery_service),
+):
+    """
+    Demo Moment 1 Seeder:
+    Seeds exactly 500 shares across 4 depth levels on the ask side:
+    - 100 shares @ ₹2,500.00
+    - 150 shares @ ₹2,500.50
+    - 200 shares @ ₹2,501.00
+    - 50 shares @ ₹2,502.00
+    This enables judges or testers to execute a 500-share BUY order that cleanly walks the book.
+    """
+    from src.common.types import Side, OrderType, ProductType
+    from src.core.models import Order
+    from src.api.dependencies import get_trade_service
+
+    svc = get_trade_service()
+    sym = req.symbol.upper()
+
+    # Register demo liquidity provider account
+    maker_account = "ACC_DEMO_MAKER"
+    svc.register_account(maker_account, initial_deposit=Decimal("10000000.00"))
+    maker_state = svc.get_account(maker_account)
+    maker_state.holdings[sym] = 5000
+
+    # Seed 4 resting sell limit orders
+    levels = [
+        (100, Decimal("2500.00")),
+        (150, Decimal("2500.50")),
+        (200, Decimal("2501.00")),
+        (50, Decimal("2502.00")),
+    ]
+
+    seeded_orders = []
+    for qty, price in levels:
+        order = Order(
+            order_id=f"ORD_SEED_{qty}_{int(price)}",
+            account_id=maker_account,
+            symbol=sym,
+            side=Side.SELL,
+            order_type=OrderType.LIMIT,
+            product_type=ProductType.CNC,
+            quantity=qty,
+            price=price,
+        )
+        res = svc.place_order(order)
+        seeded_orders.append({
+            "order_id": order.order_id,
+            "quantity": qty,
+            "price": float(price),
+            "status": res.order.status.value,
+        })
+
+    return {
+        "status": "BOOK_SEEDED",
+        "symbol": sym,
+        "total_shares_seeded": 500,
+        "levels": seeded_orders,
+        "message": f"Successfully seeded 500 shares across 4 ask levels for {sym}. Ready for 500-share book walk demo.",
+    }
+

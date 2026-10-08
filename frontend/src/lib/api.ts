@@ -213,6 +213,17 @@ export const api = {
       body: JSON.stringify({ symbol, drop_pct: percentage }),
     }),
 
+  seedDemoBook: (symbol: string = "RELIANCE") =>
+    fetchJson<{
+      status: string;
+      symbol: string;
+      total_shares_seeded: number;
+      message: string;
+    }>("/api/v1/system/seed-demo-book", {
+      method: "POST",
+      body: JSON.stringify({ symbol }),
+    }),
+
   // Margin Pre-Check
   previewMarginAndCharges: (payload: MarginCheckRequest) =>
     fetchJson<MarginCheckResponse>("/api/v1/margin/check", {

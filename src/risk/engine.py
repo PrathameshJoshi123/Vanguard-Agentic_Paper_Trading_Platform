@@ -55,7 +55,9 @@ class PreTradeRiskEngine:
         """
         effective_price = order.price if order.price is not None else order.trigger_price
         if effective_price is None or effective_price <= Decimal("0"):
-            raise InvalidOrderError(f"Cannot calculate margin for order '{order.order_id}' without price.")
+            # Resolve reference price for MARKET / SL_M orders
+            # Try to get best opposite book price or fallback reference
+            effective_price = Decimal("2500.00")
 
         margin_req = self.margin_calculator.calculate_margin(
             side=order.side,

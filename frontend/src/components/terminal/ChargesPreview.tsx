@@ -50,7 +50,16 @@ export function ChargesPreview({
           price,
         });
         if (res?.charges) {
-          setServerCharges(res.charges);
+          setServerCharges({
+            turnover: Number(res.charges.turnover) || 0,
+            brokerage: Number(res.charges.brokerage) || 0,
+            stt: Number(res.charges.stt) || 0,
+            exchange_turnover: Number(res.charges.exchange_turnover) || 0,
+            sebi_fees: Number(res.charges.sebi_fees) || 0,
+            stamp_duty: Number(res.charges.stamp_duty) || 0,
+            gst: Number(res.charges.gst) || 0,
+            total_charges: Number(res.charges.total_charges) || 0,
+          });
         }
       } catch {
         // Fall back gracefully to local deterministic math
@@ -63,9 +72,14 @@ export function ChargesPreview({
   }, [side, productType, price, quantity]);
 
   const activeCharges = serverCharges || localPreview.charges;
-  const requiredMargin = localPreview.requiredMargin;
-  const buffer = Math.round((availableCash - requiredMargin) * 100) / 100;
+  const requiredMargin = Number(localPreview.requiredMargin || 0);
+  const buffer = Math.round((Number(availableCash || 0) - requiredMargin) * 100) / 100;
   const isSufficient = buffer >= 0;
+
+  const formatCharge = (val: number | string | undefined | null): string => {
+    const num = Number(val ?? 0);
+    return isNaN(num) ? "0.00" : num.toFixed(2);
+  };
 
   return (
     <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs font-mono">
@@ -92,7 +106,10 @@ export function ChargesPreview({
         <div className="flex justify-between items-center text-slate-600">
           <span className="font-sans">Order Turnover:</span>
           <span className="font-semibold text-slate-900">
-            ₹{localPreview.turnover.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            ₹{Number(activeCharges?.turnover ?? localPreview.turnover ?? 0).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </span>
         </div>
 
@@ -101,7 +118,10 @@ export function ChargesPreview({
             Required Margin ({productType === "MIS" ? "20% / 5x" : "100% Delivery"}):
           </span>
           <span className="font-bold text-slate-900">
-            ₹{requiredMargin.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            ₹{requiredMargin.toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </span>
         </div>
 
@@ -113,7 +133,10 @@ export function ChargesPreview({
             }`}
           >
             {isSufficient ? "+" : "-"}₹
-            {Math.abs(buffer).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            {Math.abs(buffer).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </span>
         </div>
       </div>
@@ -122,37 +145,37 @@ export function ChargesPreview({
       <div className="pt-2 border-t border-slate-200 space-y-1 text-[11px]">
         <div className="flex justify-between items-center text-slate-500">
           <span className="font-sans">Brokerage ({productType === "MIS" ? "Max ₹20" : "₹0 CNC"}):</span>
-          <span>₹{activeCharges.brokerage.toFixed(2)}</span>
+          <span>₹{formatCharge(activeCharges?.brokerage)}</span>
         </div>
 
         <div className="flex justify-between items-center text-slate-500">
           <span className="font-sans">STT (Securities Tax):</span>
-          <span>₹{activeCharges.stt.toFixed(2)}</span>
+          <span>₹{formatCharge(activeCharges?.stt)}</span>
         </div>
 
         <div className="flex justify-between items-center text-slate-500">
           <span className="font-sans">Exchange Turnover Fee:</span>
-          <span>₹{activeCharges.exchange_turnover.toFixed(2)}</span>
+          <span>₹{formatCharge(activeCharges?.exchange_turnover)}</span>
         </div>
 
         <div className="flex justify-between items-center text-slate-500">
           <span className="font-sans">SEBI Turnover Fee:</span>
-          <span>₹{activeCharges.sebi_fees.toFixed(2)}</span>
+          <span>₹{formatCharge(activeCharges?.sebi_fees)}</span>
         </div>
 
         <div className="flex justify-between items-center text-slate-500">
           <span className="font-sans">Stamp Duty (State):</span>
-          <span>₹{activeCharges.stamp_duty.toFixed(2)}</span>
+          <span>₹{formatCharge(activeCharges?.stamp_duty)}</span>
         </div>
 
         <div className="flex justify-between items-center text-slate-500">
           <span className="font-sans">GST (18% on Services):</span>
-          <span>₹{activeCharges.gst.toFixed(2)}</span>
+          <span>₹{formatCharge(activeCharges?.gst)}</span>
         </div>
 
         <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-slate-200 text-slate-900 font-bold text-xs">
           <span className="font-sans">Total Regulatory Levies:</span>
-          <span className="text-blue-700">₹{activeCharges.total_charges.toFixed(2)}</span>
+          <span className="text-blue-700">₹{formatCharge(activeCharges?.total_charges)}</span>
         </div>
       </div>
 
