@@ -79,6 +79,17 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
   - [x] **System Resilience & Demo Router** (`src/api/routers/system.py`): Endpoints `POST /system/crash-replay` (Step 2 Demo: cold restart from event log), `GET /system/reconcile` (real-time audit report), and `POST /system/simulate-drop` (Step 4 Demo: instant drop injection triggering autonomous alert feed).
   - [x] **Agent Proposed Order Execution** (`src/api/routers/agent.py`): Endpoint `POST /agent/execute-proposed` executing user-approved trade proposals directly into the deterministic matching engine.
   - [x] **Verification Suite**: 72 tests passing across unit and integration suites (100% test pass rate).
+- [x] **Phase 7B: Next.js 15 Monolith Scaffold & Theme Setup** *(COMPLETED)*
+  - [x] **Monolith Scaffold**: Initialized Next.js 15 (App Router, React 19, TypeScript, Tailwind CSS v4) inside `frontend/` collocated within the repository.
+  - [x] **shadcn/ui Suite**: Initialized with base-nova preset and added core components (`card`, `badge`, `tabs`, `table`, `input`, `label`, `switch`, `dialog`, `select`, `separator`, `tooltip`, `alert`).
+  - [x] **Zustand State Architecture** (`frontend/src/store/useTradingStore.ts`): High-framerate store holding market depths, order books, positions, holdings, cash journals, audit reports, and alerts.
+  - [x] **Streaming WebSocket Hook** (`frontend/src/hooks/useWebSocketStream.ts`): Persistent connection to `ws://localhost:8000/ws/{account_id}` with exponential backoff reconnect, 20s ping heartbeats, symbol depth subscriptions, and typed event demultiplexing.
+  - [x] **Institutional Pure White Theme & Layout**:
+    - `Sidebar.tsx`: Fixed navigation linking Trading Terminal (`/`), Portfolio (`/portfolio`), Orders (`/orders`), Ledger (`/ledger`), and Copilot (`/copilot`).
+    - `TopHeader.tsx`: Global status bar with Demo Toggle Switch (`LIVE NSE` vs `OFFLINE REPLAY`), Available Cash, Realized P&L, Zero-Discrepancy audit badge (`₹0.00 Discrepancy`), Crash Replay button, and WebSocket connection indicator.
+  - [x] **API Client & Proxies**: Configured `frontend/next.config.ts` with API rewrites (`/api/*` -> `http://localhost:8000/*`) and typed REST client in `frontend/src/lib/api.ts`.
+  - [x] **Verification**: Production build (`npm run build`) succeeded with 0 errors across all 6 static/dynamic routes.
+
 
 
 
@@ -166,6 +177,8 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
 | **2026-10-08 12:39** | Phase 3 Core | Implemented `src/market_data/gateway.py` (`MarketDataGateway`) unifying Live and Replay modes. | Done |
 | **2026-10-08 12:44** | Phase 3 Verification | Added unit tests (`test_market_depth_normalizer.py`, `test_sequence_resilience.py`, `test_replay_engine.py`, `test_stop_loss_triggering.py`) and integration test (`test_market_gateway_replay_matching.py`). All 39 tests passing! | Done |
 | **2026-10-08 12:54** | nsepython Direct Integration | Installed official `nsepython` package into `.venv`, updated `requirements.txt`, updated `MarketDepthNormalizer` to parse `nse_quote` (`equityResponse.orderBook` buyPrice1..5 / sellPrice1..5), integrated `LiveNSEFeedHandler` with direct `nsepython.nse_quote()` async calls. Verified live RELIANCE quote retrieval (LTP ₹1,175.70, Bid ₹1,175.60, Ask ₹1,175.70, Spread ₹0.10). All 39 tests passing! | Done |
+| **2026-10-08 21:55** | Phase 7B Frontend Monolith | Scaffolding Next.js 15 (React 19, TypeScript, Tailwind CSS v4, Lucide icons) in `frontend/`, configured shadcn/ui components (`card`, `badge`, `tabs`, `table`, etc.), Zustand store, streaming WebSocket hook, pure white theme sidebar and top header with Demo Toggle Switch. Verified production build passed with 0 errors. | Done |
+
 
 
 
