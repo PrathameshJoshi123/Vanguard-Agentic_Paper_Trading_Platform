@@ -45,23 +45,29 @@ export interface Position {
   symbol: string;
   product_type: ProductType;
   quantity: number;
-  buy_quantity: number;
-  sell_quantity: number;
-  buy_value: number;
-  sell_value: number;
-  vwap_buy_price: number;
+  average_price: number;
   realized_pnl: number;
   unrealized_pnl: number;
-  last_price: number;
+  total_charges?: number;
+  net_pnl?: number;
+  is_open?: boolean;
+  is_long?: boolean;
+  buy_quantity?: number;
+  sell_quantity?: number;
+  buy_value?: number;
+  sell_value?: number;
+  vwap_buy_price?: number;
+  last_price?: number;
 }
 
 export interface Holding {
   account_id: string;
   symbol: string;
   quantity: number;
-  average_price: number;
-  current_value: number;
-  total_pnl: number;
+  average_buy_price?: number;
+  average_price?: number;
+  current_value?: number;
+  total_pnl?: number;
 }
 
 export interface DepthLevel {
@@ -181,4 +187,79 @@ export interface OrderPlacementResponse {
   total_charges: number;
   account_balance: number;
 }
+
+export interface TAccountItem {
+  category: string;
+  total_debits: number;
+  total_credits: number;
+  net_balance: number;
+}
+
+export interface TAccountsOverview {
+  total_debits: number;
+  total_credits: number;
+  discrepancy: number;
+  is_balanced: boolean;
+  accounts: TAccountItem[];
+  timestamp: string;
+}
+
+export interface ContractNoteSummary {
+  account_id: string;
+  total_brokerage: number;
+  total_stt: number;
+  total_exchange_turnover: number;
+  total_sebi_fees: number;
+  total_stamp_duty: number;
+  total_gst: number;
+  total_charges: number;
+  trades_count: number;
+}
+
+export interface CustomerCashEntry {
+  entry_id: string;
+  account_id: string;
+  category: string;
+  debit: number;
+  credit: number;
+  running_balance: number;
+  reference_id: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface LedgerSummary {
+  account_id: string;
+  running_balance: number;
+  entries_count: number;
+  entries: CustomerCashEntry[];
+}
+
+export interface OrderModifyPayload {
+  new_quantity?: number;
+  new_price?: number;
+}
+
+export interface SquareOffResponse {
+  status: string;
+  symbol: string;
+  side: string;
+  closed_quantity: number;
+  exit_price: number;
+  order_id: string;
+  order_status: string;
+  realized_pnl: number;
+}
+
+export interface MISSquareOffResult {
+  account_id: string;
+  symbol: string;
+  closed_quantity: number;
+  side: string;
+  exit_price: number;
+  order_id: string;
+  status: string;
+  realized_pnl?: number;
+}
+
 

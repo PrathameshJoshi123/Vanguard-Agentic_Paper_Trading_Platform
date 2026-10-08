@@ -79,12 +79,27 @@ export function useWebSocketStream() {
               updateMarketDepth(depth);
             }
           } else if (
+            type === "ORDER_PLACED" ||
             type === "ORDER_CREATED" ||
             type === "ORDER_FILLED" ||
             type === "ORDER_CANCELLED"
           ) {
             if (data.order_id) {
               addOrUpdateOrder(data as Order);
+            }
+          } else if (type === "TRADE_EXECUTED") {
+            if (data.trade_id) {
+              useTradingStore.getState().addTrade(data);
+            }
+          } else if (type === "MARGIN_UTILIZATION_CHANGED") {
+            if (data.cash_balance !== undefined) {
+              useTradingStore.getState().setCashSummary({
+                cash_balance: Number(data.cash_balance),
+                available_cash: Number(data.available_margin || data.available_cash || 0),
+                blocked_margin: Number(data.blocked_margin || 0),
+                realized_pnl: useTradingStore.getState().cashSummary.realized_pnl,
+                unrealized_pnl: useTradingStore.getState().cashSummary.unrealized_pnl,
+              });
             }
           } else if (type === "AGENT_ALERT" || msg.event_type === "AGENT_ALERT") {
             const alert: AgentAlert = {

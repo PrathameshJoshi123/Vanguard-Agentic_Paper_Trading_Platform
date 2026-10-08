@@ -109,16 +109,23 @@ def modify_order(
     order_id: str,
     req: OrderModify,
     account_id: str = Query(default="DEFAULT"),
-    symbol: str = Query(..., description="Order instrument symbol"),
+    symbol: Optional[str] = Query(default=None, description="Order instrument symbol"),
     trade_service: TradeExecutionService = Depends(get_trade_service),
 ):
     """
     Modifies quantity and/or price of a resting limit order.
     """
+    target_sym = symbol.upper() if symbol else None
+    if not target_sym:
+        order = trade_service.get_order(order_id)
+        if not order:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Order '{order_id}' not found.")
+        target_sym = order.symbol
+
     try:
         modified = trade_service.modify_order(
             account_id=account_id,
-            symbol=symbol.upper(),
+            symbol=target_sym,
             order_id=order_id,
             new_quantity=req.new_quantity,
             new_price=req.new_price,
@@ -134,16 +141,23 @@ def modify_order(
 def cancel_order(
     order_id: str,
     account_id: str = Query(default="DEFAULT"),
-    symbol: str = Query(..., description="Order instrument symbol"),
+    symbol: Optional[str] = Query(default=None, description="Order instrument symbol"),
     trade_service: TradeExecutionService = Depends(get_trade_service),
 ):
     """
     Cancels an active resting order and releases blocked margin.
     """
+    target_sym = symbol.upper() if symbol else None
+    if not target_sym:
+        order = trade_service.get_order(order_id)
+        if not order:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Order '{order_id}' not found.")
+        target_sym = order.symbol
+
     try:
         cancelled = trade_service.cancel_order(
             account_id=account_id,
-            symbol=symbol.upper(),
+            symbol=target_sym,
             order_id=order_id,
         )
         return _to_order_response(cancelled)

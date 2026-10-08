@@ -1,5 +1,6 @@
 import {
   Order,
+  Trade,
   Position,
   Holding,
   MarketDepth,
@@ -11,6 +12,10 @@ import {
   MarginCheckRequest,
   MarginCheckResponse,
   OrderPlacementResponse,
+  TAccountsOverview,
+  ContractNoteSummary,
+  CustomerCashEntry,
+  LedgerSummary,
 } from "./types";
 
 // Base API route proxied by Next.js rewrites to http://localhost:8000
@@ -51,31 +56,118 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  cancelOrder: (orderId: string) =>
-    fetchJson<{ message: string }>(`/api/v1/orders/${orderId}`, {
+  modifyOrder: (
+    orderId: string,
+    payload: { new_quantity?: number; new_price?: number },
+    accountId: string = "DEFAULT"
+  ) =>
+    fetchJson<Order>(`/api/v1/orders/${orderId}?account_id=${accountId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  cancelOrder: (orderId: string, accountId: string = "DEFAULT") =>
+    fetchJson<Order>(`/api/v1/orders/${orderId}?account_id=${accountId}`, {
       method: "DELETE",
     }),
 
+  getTrades: (accountId: string = "DEFAULT", symbol?: string) =>
+    fetchJson<Trade[]>(
+      `/api/v1/orders/trades/history?account_id=${accountId}${
+        symbol ? `&symbol=${symbol}` : ""
+      }`
+    ),
+
   // Portfolio & Positions
   getPositions: (accountId: string = "DEFAULT") =>
-    fetchJson<Position[]>(`/api/v1/portfolio/${accountId}/positions`),
+    fetchJson<Position[]>(`/api/v1/positions?account_id=${accountId}`),
 
   getHoldings: (accountId: string = "DEFAULT") =>
-    fetchJson<Holding[]>(`/api/v1/portfolio/${accountId}/holdings`),
+    fetchJson<Holding[]>(`/api/v1/holdings?account_id=${accountId}`),
+
+  squareOffPosition: (symbol: string, accountId: string = "DEFAULT") =>
+    fetchJson<{
+      status: string;
+      symbol: string;
+      side: string;
+      closed_quantity: number;
+      exit_price: number;
+      order_id: string;
+      order_status: string;
+      realized_pnl: number;
+    }>(`/api/v1/portfolio/squareoff/${symbol}?account_id=${accountId}`, {
+      method: "POST",
+    }),
+
+  triggerMISSquareOff: (accountId?: string) =>
+    fetchJson<Array<{
+      account_id: string;
+      symbol: string;
+      closed_quantity: number;
+      side: string;
+      exit_price: number;
+      order_id: string;
+      status: string;
+      realized_pnl?: number;
+    }>>(
+      `/api/v1/settlement/mis-squareoff${
+        accountId ? `?account_id=${accountId}` : ""
+      }`,
+      {
+        method: "POST",
+      }
+    ),
 
   // Ledger & Accounting
   getLedgerSummary: (accountId: string = "DEFAULT") =>
     fetchJson<{
       account_id: string;
-      cash_balance: number;
-      available_cash: number;
-      blocked_margin: number;
-      realized_pnl: number;
-      unrealized_pnl: number;
-    }>(`/api/v1/ledger/${accountId}/summary`),
+      running_balance: number;
+      entries_count: number;
+      entries: Array<{
+        entry_id: string;
+        account_id: string;
+        category: string;
+        debit: number;
+        credit: number;
+        running_balance: number;
+        reference_id: string;
+        description: string;
+        timestamp: string;
+      }>;
+    }>(`/api/v1/ledger?account_id=${accountId}`),
+
+  getTAccountsOverview: (accountId: string = "DEFAULT") =>
+    fetchJson<{
+      total_debits: number;
+      total_credits: number;
+      discrepancy: number;
+      is_balanced: boolean;
+      accounts: Array<{
+        category: string;
+        total_debits: number;
+        total_credits: number;
+        net_balance: number;
+      }>;
+      timestamp: string;
+    }>(`/api/v1/ledger/t-accounts?account_id=${accountId}`),
 
   getTAccounts: (accountId: string = "DEFAULT") =>
-    fetchJson<DoubleEntryReport>(`/api/v1/ledger/${accountId}/t-accounts`),
+    fetchJson<DoubleEntryReport>(`/api/v1/ledger/t-accounts?account_id=${accountId}`),
+
+  getContractNotesSummary: (accountId: string = "DEFAULT") =>
+    fetchJson<{
+      account_id: string;
+      total_brokerage: number;
+      total_stt: number;
+      total_exchange_turnover: number;
+      total_sebi_fees: number;
+      total_stamp_duty: number;
+      total_gst: number;
+      total_charges: number;
+      trades_count: number;
+    }>(`/api/v1/ledger/contract-notes?account_id=${accountId}`),
+
 
   // Market Data
   getMarketDepth: (symbol: string) =>

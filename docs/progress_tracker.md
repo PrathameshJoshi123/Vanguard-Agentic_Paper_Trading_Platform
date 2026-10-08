@@ -98,6 +98,26 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
     - `POST /api/v1/margin/check` (`src/api/routers/margin.py`): Validates pre-trade margin sufficiency and returns statutory tax breakdown.
     - `GET /api/v1/market/candles/{symbol}` (`src/api/routers/market.py`): Delivers chronologically ordered 1-minute OHLCV bars for TradingView charts.
   - [x] **Verification Suite**: 76 pytest tests passing (100% test pass rate), Next.js production build (`npm run build`) succeeded with 0 errors across all routes.
+- [x] **Phase 7D: Portfolio, Orders & Double-Entry Ledger Views** *(COMPLETED)*
+  - [x] **Portfolio & Positions Workspace** (`frontend/src/app/portfolio/page.tsx`):
+    - `PositionsTable.tsx`: Live open positions table with real-time VWAP, Mark-to-Market (MTM) P&L updates from tick feed, realized P&L, incurred charges, and single-click individual position square-off.
+    - `HoldingsTable.tsx`: Delivery inventory table (CNC) displaying symbol, holding quantity, average buy price, current LTP, invested capital, current market value, and total return (₹ and %).
+    - `MISSquareOffBanner.tsx`: Prominent 15:20:00 IST auto square-off banner with live countdown timer and judge-accessible "Force Square-Off" modal simulation trigger.
+    - KPI Cards: Invested Capital, Holdings Market Value, Live Unrealized MTM, and Realized P&L settled into cash ledger.
+  - [x] **Orders & Executions Workspace** (`frontend/src/app/orders/page.tsx`):
+    - `OpenOrdersTable.tsx`: Resting order book inspection (`OPEN`, `PENDING`, `TRIGGER_PENDING`, `PARTIALLY_FILLED`) with in-line order cancellation (instant margin release) and modification modal triggers.
+    - `OrderModifyModal.tsx`: User-approved Modal Dialog showing original vs new quantity and limit price with live margin delta impact calculation.
+    - `TradeHistoryTable.tsx`: Complete trade execution history with expandable multi-level book-walk inspection tracing parent orders to atomic match legs with maker/taker flags.
+  - [x] **Regulatory Accounting & Ledger Audit Workspace** (`frontend/src/app/ledger/page.tsx`):
+    - `TAccountsCard.tsx`: User-approved Option B Modern Financial Ledger Card Grid rendering separate Debit/Credit bars, net liability/asset status, and top equilibrium validator badge (`₹0.00 Discrepancy Verified`).
+    - `ContractNoteCard.tsx`: Itemized breakdown of statutory levies (Brokerage, STT, Exchange turnover fees, SEBI charges, Stamp duty, 18% GST) per settlement.
+    - `CashJournalTable.tsx`: Chronological append-only customer cash ledger table with running balance accurate down to ₹0.01 paise.
+  - [x] **Backend API Extensions** (`src/api/routers/`):
+    - `POST /portfolio/squareoff/{symbol}` (`src/api/routers/portfolio.py`): Automatically computes net quantity and executes an opposite closing market order against resting book depth.
+    - `GET /ledger/t-accounts` & `GET /ledger/contract-notes` (`src/api/routers/ledger.py`): Delivers aggregated Double-Entry T-Accounts equilibrium and statutory charge summaries.
+    - Enhanced `PATCH /orders/{order_id}` and `DELETE /orders/{order_id}` to resolve symbol automatically if omitted from query parameters.
+  - [x] **Verification Suite**: 4 dedicated integration tests passing (`test_phase7d_portfolio_orders_ledger.py`), full Next.js production build (`npm run build`) succeeded with 0 errors across all routes.
+
 
 ---
 

@@ -30,7 +30,15 @@ export function AppStreamProvider({ children }: { children: React.ReactNode }) {
 
         if (ordersData.status === "fulfilled") setOrders(ordersData.value);
         if (positionsData.status === "fulfilled") setPositions(positionsData.value);
-        if (ledgerData.status === "fulfilled") setCashSummary(ledgerData.value);
+        if (ledgerData.status === "fulfilled") {
+          setCashSummary({
+            cash_balance: ledgerData.value.running_balance,
+            available_cash: ledgerData.value.running_balance,
+            blocked_margin: 0,
+            realized_pnl: 0,
+            unrealized_pnl: 0,
+          });
+        }
         if (tAccountsData.status === "fulfilled") setAuditReport(tAccountsData.value);
         if (feedData.status === "fulfilled") setFeedStatus(feedData.value);
       } catch (err) {

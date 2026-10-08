@@ -1,88 +1,119 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { useTradingStore } from "@/store/useTradingStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpenCheck, CheckCircle2, ShieldCheck } from "lucide-react";
+import { api } from "@/lib/api";
+import { TAccountsCard } from "@/components/ledger/TAccountsCard";
+import { ContractNoteCard } from "@/components/ledger/ContractNoteCard";
+import { CashJournalTable } from "@/components/ledger/CashJournalTable";
+import {
+  BookOpenCheck,
+  CheckCircle2,
+  RefreshCw,
+  FileSpreadsheet,
+  ShieldCheck,
+} from "lucide-react";
 
 export default function LedgerPage() {
-  const auditReport = useTradingStore((s) => s.auditReport);
-  const cashSummary = useTradingStore((s) => s.cashSummary);
+  const accountId = useTradingStore((s) => s.accountId);
+  const tAccounts = useTradingStore((s) => s.tAccounts);
+  const contractNotes = useTradingStore((s) => s.contractNotes);
+  const cashEntries = useTradingStore((s) => s.cashEntries);
+  const setTAccounts = useTradingStore((s) => s.setTAccounts);
+  const setContractNotes = useTradingStore((s) => s.setContractNotes);
+  const setCashEntries = useTradingStore((s) => s.setCashEntries);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const refreshLedger = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [tAccData, notesData, journalData] = await Promise.all([
+        api.getTAccountsOverview(accountId),
+        api.getContractNotesSummary(accountId),
+        api.getLedgerSummary(accountId),
+      ]);
+      setTAccounts(tAccData);
+      setContractNotes(notesData);
+      setCashEntries(journalData.entries);
+    } catch (err) {
+      console.error("Failed to fetch ledger accounts:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accountId, setTAccounts, setContractNotes, setCashEntries]);
+
+  useEffect(() => {
+    refreshLedger();
+  }, [refreshLedger]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <BookOpenCheck className="w-5 h-5 text-slate-700" />
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Regulatory Accounting &amp; Ledger Audit
-          </h1>
+          <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center">
+            <BookOpenCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Regulatory Accounting &amp; Ledger Audit
+            </h1>
+            <p className="text-xs text-slate-500">
+              Balanced Double-Entry T-Accounts, contract notes, and immutable customer cash journal
+            </p>
+          </div>
         </div>
-        <Badge
-          variant="outline"
-          className="bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs flex items-center gap-1.5"
-        >
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Balanced Equation: ₹0.00 Discrepancy</span>
-        </Badge>
+
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs flex items-center gap-1.5 py-1 px-2.5"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>₹0.00 Discrepancy Verified</span>
+          </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+            onClick={refreshLedger}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`}
+            />
+            Audit Ledger
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardHeader className="py-3 px-5 border-b border-slate-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              Double-Entry T-Accounts Equilibrium
-            </CardTitle>
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-          </CardHeader>
-          <CardContent className="p-5 space-y-3 font-mono text-xs">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500 font-sans">Total Debits:</span>
-              <span className="font-semibold text-slate-900">
-                ₹{(auditReport?.total_debits || 50000).toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500 font-sans">Total Credits:</span>
-              <span className="font-semibold text-slate-900">
-                ₹{(auditReport?.total_credits || 50000).toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between py-1 bg-emerald-50 px-2 rounded border border-emerald-200 text-emerald-800">
-              <span className="font-sans font-semibold">Net Discrepancy:</span>
-              <span className="font-bold">
-                ₹{(auditReport?.discrepancy || 0).toFixed(2)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Double-Entry T-Accounts Financial Ledger Grid (Option B) */}
+      <TAccountsCard tAccounts={tAccounts} />
 
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardHeader className="py-3 px-5 border-b border-slate-100">
-            <CardTitle className="text-sm font-semibold">
-              Contract Note Tax Breakdown
+      {/* Contract Notes Statutory Tax Summary */}
+      <ContractNoteCard summary={contractNotes} />
+
+      {/* Customer Cash Journal Table */}
+      <Card className="bg-white border-slate-200 shadow-2xs">
+        <CardHeader className="py-3 px-5 border-b border-slate-100 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4 text-slate-700" />
+            <CardTitle className="text-sm font-semibold text-slate-900">
+              Customer Cash Journal (Append-Only Entry Log)
             </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 text-xs text-slate-600 space-y-2">
-            <div className="flex justify-between">
-              <span>Brokerage (Max ₹20 / 0.03%):</span>
-              <span className="font-mono text-slate-900">Itemized per fill</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Securities Transaction Tax (STT):</span>
-              <span className="font-mono text-slate-900">CNC 0.1% / MIS 0.025% sell</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Exchange Turnover &amp; SEBI Levies:</span>
-              <span className="font-mono text-slate-900">Exact NSE schedule</span>
-            </div>
-            <div className="flex justify-between">
-              <span>GST (18%) &amp; Stamp Duty:</span>
-              <span className="font-mono text-slate-900">Quantized to ₹0.01 paise</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <div className="text-xs font-mono text-slate-500">
+            Total Entries: {cashEntries.length}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <CashJournalTable entries={cashEntries} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,12 +1,16 @@
 import { create } from "zustand";
 import {
   Order,
+  Trade,
   Position,
   Holding,
   MarketDepth,
   DoubleEntryReport,
   FeedStatus,
   AgentAlert,
+  TAccountsOverview,
+  ContractNoteSummary,
+  CustomerCashEntry,
 } from "@/lib/types";
 
 interface CashSummary {
@@ -23,10 +27,14 @@ interface TradingState {
   wsConnected: boolean;
   marketDepth: Record<string, MarketDepth>;
   orders: Order[];
+  trades: Trade[];
   positions: Position[];
   holdings: Holding[];
   cashSummary: CashSummary;
   auditReport: DoubleEntryReport | null;
+  tAccounts: TAccountsOverview | null;
+  contractNotes: ContractNoteSummary | null;
+  cashEntries: CustomerCashEntry[];
   feedStatus: FeedStatus | null;
   alerts: AgentAlert[];
 
@@ -37,10 +45,15 @@ interface TradingState {
   updateMarketDepth: (depth: MarketDepth) => void;
   setOrders: (orders: Order[]) => void;
   addOrUpdateOrder: (order: Order) => void;
+  setTrades: (trades: Trade[]) => void;
+  addTrade: (trade: Trade) => void;
   setPositions: (positions: Position[]) => void;
   setHoldings: (holdings: Holding[]) => void;
   setCashSummary: (summary: CashSummary) => void;
   setAuditReport: (report: DoubleEntryReport | null) => void;
+  setTAccounts: (overview: TAccountsOverview | null) => void;
+  setContractNotes: (notes: ContractNoteSummary | null) => void;
+  setCashEntries: (entries: CustomerCashEntry[]) => void;
   setFeedStatus: (status: FeedStatus | null) => void;
   addAlert: (alert: AgentAlert) => void;
   dismissAlert: (id: string) => void;
@@ -52,8 +65,13 @@ export const useTradingStore = create<TradingState>((set) => ({
   wsConnected: false,
   marketDepth: {},
   orders: [],
+  trades: [],
   positions: [],
   holdings: [],
+  tAccounts: null,
+  contractNotes: null,
+  cashEntries: [],
+
   cashSummary: {
     cash_balance: 50000,
     available_cash: 50000,
@@ -103,10 +121,22 @@ export const useTradingStore = create<TradingState>((set) => ({
       return { orders: [order, ...state.orders] };
     }),
 
+  setTrades: (trades) => set({ trades }),
+
+  addTrade: (trade) =>
+    set((state) => {
+      const exists = state.trades.some((t) => t.trade_id === trade.trade_id);
+      if (exists) return state;
+      return { trades: [trade, ...state.trades] };
+    }),
+
   setPositions: (positions) => set({ positions }),
   setHoldings: (holdings) => set({ holdings }),
   setCashSummary: (cashSummary) => set({ cashSummary }),
   setAuditReport: (auditReport) => set({ auditReport }),
+  setTAccounts: (tAccounts) => set({ tAccounts }),
+  setContractNotes: (contractNotes) => set({ contractNotes }),
+  setCashEntries: (cashEntries) => set({ cashEntries }),
   setFeedStatus: (feedStatus) => set({ feedStatus }),
 
   addAlert: (alert) =>
