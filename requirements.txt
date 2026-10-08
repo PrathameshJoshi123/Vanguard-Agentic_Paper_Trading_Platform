@@ -10,5 +10,8 @@ pytest>=8.3.0
 pytest-asyncio>=0.24.0
 httpx>=0.28.0
 nsepython>=2.100.0
-
-
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain-mistralai>=0.2.0
+feedparser>=6.0.0
+ddgs>=9.0.0

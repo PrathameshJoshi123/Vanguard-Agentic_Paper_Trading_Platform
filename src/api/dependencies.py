@@ -35,6 +35,19 @@ def get_market_gateway() -> MarketDataGateway:
     return _market_gateway
 
 
+def get_risk_engine():
+    return get_trade_service().risk_engine
+
+
+def get_position_manager():
+    return get_trade_service().position_manager
+
+
+def get_ledger():
+    return get_trade_service().ledger
+
+
+
 def reset_engine_state() -> None:
     """Helper for testing to reset engine singletons."""
     global _trade_service, _market_gateway

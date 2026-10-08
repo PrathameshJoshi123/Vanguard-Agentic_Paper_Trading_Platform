@@ -59,8 +59,16 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
   - [x] Market Depth Matcher & SL/SL-M Engine (`src/market_data/depth_matcher.py`): Bridges market depth updates into the engine, evaluates Stop-Loss triggers, and fills resting limit orders.
   - [x] Verification Suite: 39 tests all passing, including the Phase 3 Exit Criteria (50 historical RELIANCE ticks replay fills resting limit orders).
 - [ ] **Phase 4: MIS 15:20 Auto Square-Off & Daily Scheduler**
-- [ ] **Phase 5: FastAPI REST API & WebSocket Real-time Feeds**
-- [ ] **Phase 6: Agentic Intelligence Layer (Isolated Plane - Research, News, Portfolio, Screener)**
+- [x] **Phase 5: Agentic Intelligence Plane & Tool Policy Gateway** *(COMPLETED)*
+  - [x] Multi-Agent LangGraph Supervisor Network (`src/agentic/graph.py`, `src/agentic/supervisor.py`, `src/agentic/synthesizer.py`): Supervisor orchestrates intent routing to Research, Portfolio, and Trade Proposer specialist agents.
+  - [x] Mistral LLM Integration & Mock Fallback (`src/agentic/llm.py`, `src/agentic/config.py`): Pluggable Mistral client (`langchain-mistralai`) with deterministic fallback for offline testing.
+  - [x] Tool Policy Gateway / Firewall (`src/agentic/policy/engine.py`, `src/agentic/policy/models.py`, `src/agentic/tools/write_tools.py`): Enforces hard safety limits (Max position size ₹50,000, Max single loss ₹2,000, Account Margin Check). Returns structured `{status: "NEEDS_APPROVAL", order_payload: {...}}` or rejection.
+  - [x] Read-Only Tool Gateway (`src/agentic/tools/read_tools.py`): `get_current_price`, `get_portfolio_positions`, `get_ledger_summary`, `get_news_by_symbol` directly inspect trading plane without side effects.
+  - [x] Multi-Source Research & Web Intelligence (`src/agentic/tools/scraper.py`): Multi-source engine combining DuckDuckGo search (`ddgs` library) for live web news & broker research with Google News RSS and Moneycontrol RSS feeds.
+  - [x] Live Mistral LLM Integration (`src/agentic/llm.py`, `src/agentic/synthesizer.py`): Full integration with Mistral AI via `langchain-mistralai` (`ChatMistralAI`), verified live with active API credentials and comprehensive test coverage.
+  - [x] Verification Suite: Tests passing for DDGS scraper (`test_market_research_scraper.py`), policy engine (`test_agent_policy_engine.py`), read tools (`test_agent_read_tools.py`), graph integration (`test_agent_graph_integration.py`), and REST endpoint (`test_api_agent_chat.py`), satisfying the Phase 5 Exit Criteria.
+
+
 
 
 ---

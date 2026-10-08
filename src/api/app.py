@@ -55,6 +55,8 @@ def create_app() -> FastAPI:
     app.include_router(ledger_router)
     app.include_router(margin_router)
     app.include_router(websocket_router)
+    from src.api.routers import agent_router
+    app.include_router(agent_router)
 
     @app.get("/health", tags=["Health"])
     def health_check():
