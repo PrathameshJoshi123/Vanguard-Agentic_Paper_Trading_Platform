@@ -51,10 +51,17 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
   - [x] Storage Integration (`src/storage/database.py`, `src/storage/models/`): SQLAlchemy 2.0 Async PostgreSQL/Supabase models & async engine
   - [x] End-to-End Orchestrator (`src/core/trade_service.py`): Deterministic order-to-ledger execution pipeline
   - [x] Verification Suite: 31 tests all passing, including the Phase 2 round-trip trade exit criteria (Buy 100 @ 100, Sell 100 @ 110 MIS -> Gross ₹1,000, Charges ₹11.26, Running Balance ₹50,988.74)
-- [ ] **Phase 3: Market Data Engine & L2 Live Ticks Ingestion**
+- [x] **Phase 3: Market Data Engine & L2 Live Ticks Ingestion** *(COMPLETED)*
+  - [x] MarketDepth DTO & L2 Normalizer (`src/market_data/models.py`, `src/market_data/normalizer.py`): Ingests top 5 bid/ask structures, LTP, volume, OHLC with Decimal precision.
+  - [x] Sequence & Feed Resilience Manager (`src/market_data/sequence_manager.py`): Drops duplicates, filters out-of-order ticks, tracks sequence gaps, and monitors feed health.
+  - [x] Dual-Mode Feed Handler (`src/market_data/live_feed.py`, `src/market_data/replay_engine.py`): Resilient live NSE India quote fetching and async `.jsonl` historical tick replayer with configurable speed pacing.
+  - [x] Unified Gateway (`src/market_data/gateway.py`): Seamless switching between Live and Replay modes with subscriber dispatch.
+  - [x] Market Depth Matcher & SL/SL-M Engine (`src/market_data/depth_matcher.py`): Bridges market depth updates into the engine, evaluates Stop-Loss triggers, and fills resting limit orders.
+  - [x] Verification Suite: 39 tests all passing, including the Phase 3 Exit Criteria (50 historical RELIANCE ticks replay fills resting limit orders).
 - [ ] **Phase 4: MIS 15:20 Auto Square-Off & Daily Scheduler**
 - [ ] **Phase 5: FastAPI REST API & WebSocket Real-time Feeds**
 - [ ] **Phase 6: Agentic Intelligence Layer (Isolated Plane - Research, News, Portfolio, Screener)**
+
 
 ---
 
@@ -128,8 +135,19 @@ This document tracks the end-to-end implementation progress of the **PS-05 Paper
 | **2026-10-08 08:26** | Phase 2 Core | Implemented `src/portfolio/models.py` and `src/portfolio/position_manager.py` (VWAP, Realized P&L, MTM). Added unit tests in `test_positions_pnl.py`. | Done |
 | **2026-10-08 08:27** | Phase 2 Core | Implemented `src/ledger/models.py` and `src/ledger/journal.py` (`ImmutableDoubleEntryLedger`, T-Accounts). Added unit tests in `test_double_entry_ledger.py`. | Done |
 | **2026-10-08 08:38** | Phase 2 DB | Configured `src/storage/database.py` (Supabase PostgreSQL / asyncpg with SQLite fallback) and created SQLAlchemy models in `src/storage/models/`. Added unit tests in `test_storage_models.py`. | Done |
-| **2026-10-08 08:40** | Phase 2 Integration | Implemented `src/core/trade_service.py` coordinating Risk -> Matching -> Charges -> Positions -> Ledger. Created `tests/integration/test_financial_engine_roundtrip.py`. | Done |
 | **2026-10-08 08:42** | Phase 2 Exit Criteria | Ran all 31 pytest tests. All passed in 0.62s. Exit criteria (Buy 100 @ 100, Sell 100 @ 110 MIS -> Gross ₹1,000, Charges ₹11.26, Running balance ₹50,988.74) fully verified down to exact paisa. | Done |
+| **2026-10-08 12:26** | Phase 3 Research | Researched `nsepython` and NSE public endpoints (`api/quote-equity?symbol=`). Identified exact nested structure (`marketDeptOrderBook.bid`, `marketDeptOrderBook.ask`, `priceInfo.lastPrice`). | Done |
+| **2026-10-08 12:37** | Phase 3 Core | Extended `OrderStatus` with `TRIGGER_PENDING` and updated `OrderStateMachine` and `Order` models to support Stop-Loss (`SL`) and Stop-Loss Market (`SL_M`). | Done |
+| **2026-10-08 12:38** | Phase 3 Core | Implemented `src/market_data/models.py` (`MarketDepth`, `DepthLevel`, `FeedHealth`, `FeedStatus`) and `src/market_data/normalizer.py` (`MarketDepthNormalizer`). | Done |
+| **2026-10-08 12:38** | Phase 3 Core | Implemented `src/market_data/sequence_manager.py` with duplicate detection, out-of-order rejection, sequence gap detection, and rolling signature windows. | Done |
+| **2026-10-08 12:38** | Phase 3 Core | Implemented `src/market_data/replay_engine.py` for async `.jsonl` streaming with configurable time pacing. | Done |
+| **2026-10-08 12:39** | Phase 3 Core | Implemented `src/market_data/live_feed.py` (`LiveNSEFeedHandler`) using async `httpx` with session cookies and non-crashing network recovery. | Done |
+| **2026-10-08 12:39** | Phase 3 Core | Implemented `src/market_data/depth_matcher.py` (`MarketDepthMatcher`) bridging L2 depth to SL/SL-M triggers and resting limit order crossings. | Done |
+| **2026-10-08 12:39** | Phase 3 Core | Implemented `src/market_data/gateway.py` (`MarketDataGateway`) unifying Live and Replay modes. | Done |
+| **2026-10-08 12:44** | Phase 3 Verification | Added unit tests (`test_market_depth_normalizer.py`, `test_sequence_resilience.py`, `test_replay_engine.py`, `test_stop_loss_triggering.py`) and integration test (`test_market_gateway_replay_matching.py`). All 39 tests passing! | Done |
+| **2026-10-08 12:54** | nsepython Direct Integration | Installed official `nsepython` package into `.venv`, updated `requirements.txt`, updated `MarketDepthNormalizer` to parse `nse_quote` (`equityResponse.orderBook` buyPrice1..5 / sellPrice1..5), integrated `LiveNSEFeedHandler` with direct `nsepython.nse_quote()` async calls. Verified live RELIANCE quote retrieval (LTP ₹1,175.70, Bid ₹1,175.60, Ask ₹1,175.70, Spread ₹0.10). All 39 tests passing! | Done |
+
+
 
 ---
 

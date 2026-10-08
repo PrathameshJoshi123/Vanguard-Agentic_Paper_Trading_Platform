@@ -70,6 +70,17 @@ class Order(BaseModel):
             if self.price is None or self.price <= Decimal("0"):
                 raise InvalidOrderError(f"LIMIT order '{self.order_id}' requires a positive price.")
             self.price = to_money(self.price)
+        elif self.order_type == OrderType.SL:
+            if self.trigger_price is None or self.trigger_price <= Decimal("0"):
+                raise InvalidOrderError(f"SL order '{self.order_id}' requires a positive trigger_price.")
+            if self.price is None or self.price <= Decimal("0"):
+                raise InvalidOrderError(f"SL order '{self.order_id}' requires a positive limit price.")
+            self.trigger_price = to_money(self.trigger_price)
+            self.price = to_money(self.price)
+        elif self.order_type == OrderType.SL_M:
+            if self.trigger_price is None or self.trigger_price <= Decimal("0"):
+                raise InvalidOrderError(f"SL_M order '{self.order_id}' requires a positive trigger_price.")
+            self.trigger_price = to_money(self.trigger_price)
         
         # Initial remaining quantity should equal total quantity if not set
         if self.remaining_qty == 0 and self.filled_qty == 0:
@@ -80,7 +91,8 @@ class Order(BaseModel):
     @property
     def is_active(self) -> bool:
         """Active orders rest on the book or can be matched."""
-        return self.status in (OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED)
+        return self.status in (OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED, OrderStatus.TRIGGER_PENDING)
+
 
     @property
     def is_terminal(self) -> bool:

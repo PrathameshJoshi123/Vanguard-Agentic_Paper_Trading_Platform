@@ -12,13 +12,20 @@ from src.core.models import Order
 # Allowed transition matrix
 VALID_TRANSITIONS: Dict[OrderStatus, Set[OrderStatus]] = {
     OrderStatus.PENDING: {
+        OrderStatus.TRIGGER_PENDING,
         OrderStatus.OPEN,
         OrderStatus.PARTIALLY_FILLED,
         OrderStatus.FILLED,
         OrderStatus.REJECTED,
         OrderStatus.CANCELLED,
     },
+    OrderStatus.TRIGGER_PENDING: {
+        OrderStatus.OPEN,
+        OrderStatus.CANCELLED,
+        OrderStatus.REJECTED,
+    },
     OrderStatus.OPEN: {
+
         OrderStatus.PARTIALLY_FILLED,
         OrderStatus.FILLED,
         OrderStatus.CANCELLED,

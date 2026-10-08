@@ -15,11 +15,13 @@ class OrderType(str, Enum):
 
 class OrderStatus(str, Enum):
     PENDING = "PENDING"
+    TRIGGER_PENDING = "TRIGGER_PENDING"  # Resting Stop-Loss order awaiting trigger price
     OPEN = "OPEN"
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
     FILLED = "FILLED"
     CANCELLED = "CANCELLED"
     REJECTED = "REJECTED"
+
 
 
 class ProductType(str, Enum):
