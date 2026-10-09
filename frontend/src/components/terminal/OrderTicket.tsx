@@ -32,9 +32,25 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
   const availableCash = useTradingStore((s) => s.cashSummary.available_cash);
   const marketDepth = useTradingStore((s) => s.marketDepth[selectedSymbol]);
   const holdings = useTradingStore((s) => s.holdings);
+  const setHoldings = useTradingStore((s) => s.setHoldings);
   const addOrUpdateOrder = useTradingStore((s) => s.addOrUpdateOrder);
   const setCashSummary = useTradingStore((s) => s.setCashSummary);
   const cashSummary = useTradingStore((s) => s.cashSummary);
+
+  // Synchronize holdings from backend on mount and symbol change
+  useEffect(() => {
+    let isMounted = true;
+    api.getHoldings(accountId)
+      .then((h) => {
+        if (isMounted && Array.isArray(h)) {
+          setHoldings(h);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [accountId, setHoldings, selectedSymbol]);
 
   const currentHolding =
     holdings.find((h) => h.symbol.toUpperCase() === selectedSymbol.toUpperCase())?.quantity || 0;
@@ -130,6 +146,13 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
             available_cash: Math.max(0, numBalance - cashSummary.blocked_margin),
           });
         }
+
+        // Refresh Demat holdings immediately
+        api.getHoldings(accountId)
+          .then((h) => {
+            if (Array.isArray(h)) setHoldings(h);
+          })
+          .catch(() => {});
 
         const tradesCount = res.trades ? res.trades.length : 0;
         const avgFill = Number(res.order.average_fill_price || numPrice);

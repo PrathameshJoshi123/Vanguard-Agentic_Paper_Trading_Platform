@@ -118,8 +118,13 @@ class TradeExecutionService:
 
     def get_account(self, account_id: str) -> AccountRiskState:
         if account_id not in self._accounts:
-            return self.register_account(account_id)
-        return self._accounts[account_id]
+            state = self.register_account(account_id)
+        else:
+            state = self._accounts[account_id]
+        if hasattr(self, "position_manager") and self.position_manager:
+            for h in self.position_manager.get_holdings(account_id):
+                state.holdings[h.symbol] = h.quantity
+        return state
 
     def get_order(self, order_id: str) -> Optional[Order]:
         return self._orders.get(order_id)
@@ -294,6 +299,7 @@ class TradeExecutionService:
                     # Sync and emit delivery holding
                     holding = self.position_manager.get_holding(account.account_id, taker_order.symbol)
                     if holding:
+                        account.holdings[taker_order.symbol] = holding.quantity
                         self._emit(
                             event_type=DomainEventType.HOLDING_UPDATED,
                             entity_type="HOLDING",
@@ -301,6 +307,8 @@ class TradeExecutionService:
                             account_id=account.account_id,
                             payload=holding.model_dump(mode="json"),
                         )
+                    else:
+                        account.holdings[taker_order.symbol] = 0
 
                 # Emit TRADE_EXECUTED
                 trade_dict = trade_event.model_dump(mode="json")

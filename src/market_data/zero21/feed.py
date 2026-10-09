@@ -4,6 +4,7 @@ import logging
 from collections import deque
 from typing import Callable, Dict, List, Optional, Set, Tuple
 import websockets
+from websockets.protocol import State
 
 from src.market_data.models import FeedHealth, FeedStatus, MarketDepth
 from src.market_data.sequence_manager import SequenceManager
@@ -52,6 +53,14 @@ class Zero21MarketFeedHandler:
         self._frame_cache: Dict[bytes, List[MarketDepth]] = {}
         self._frame_cache_queue: deque = deque()
 
+    @property
+    def _is_ws_open(self) -> bool:
+        if self._ws is None:
+            return False
+        if hasattr(self._ws, "state"):
+            return self._ws.state == State.OPEN
+        return getattr(self._ws, "open", not getattr(self._ws, "closed", True))
+
     def add_callback(self, callback: Callable[[MarketDepth], None]) -> None:
         """Registers a callback to receive parsed and validated MarketDepth ticks."""
         self._callbacks.append(callback)
@@ -59,7 +68,7 @@ class Zero21MarketFeedHandler:
     def subscribe_token(self, token: int, exchange_code: int = 1) -> None:
         """Adds an instrument to subscription list by token and exchange code."""
         self._subscribed_instruments.add((exchange_code, token))
-        if self._ws and self._running and not self._ws.closed:
+        if self._is_ws_open and self._running:
             asyncio.create_task(self._send_subscribe([(exchange_code, token)]))
 
     def subscribe_symbol(self, symbol: str, exchange_code: int = 1) -> bool:
@@ -73,7 +82,7 @@ class Zero21MarketFeedHandler:
 
     async def _send_subscribe(self, instruments: List[Tuple[int, int]]) -> None:
         """Sends JSON subscription frame over active WebSocket connection."""
-        if not self._ws or self._ws.closed:
+        if not self._is_ws_open:
             return
         # Payload format: {"Task":"subscribe","Mode":"full","Instruments":[[1,2885],...]}
         payload = {
@@ -98,7 +107,7 @@ class Zero21MarketFeedHandler:
     async def stop(self) -> None:
         """Gracefully stops the WebSocket feed handler."""
         self._running = False
-        if self._ws and not self._ws.closed:
+        if self._is_ws_open:
             await self._ws.close()
             self._ws = None
         if self._ws_task and not self._ws_task.done():

@@ -18,6 +18,20 @@ export default function TradingTerminalPage() {
   // Cross-component click-to-trade state
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
 
+  const accountId = useTradingStore((s) => s.accountId);
+  const setHoldings = useTradingStore((s) => s.setHoldings);
+
+  // Sync holdings from backend on page mount
+  useEffect(() => {
+    api.getHoldings(accountId)
+      .then((h) => {
+        if (Array.isArray(h)) {
+          setHoldings(h);
+        }
+      })
+      .catch(() => {});
+  }, [accountId, setHoldings]);
+
   // Sync depth from REST API whenever symbol changes
   useEffect(() => {
     let isMounted = true;

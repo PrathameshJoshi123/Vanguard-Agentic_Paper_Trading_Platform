@@ -182,6 +182,32 @@ def seed_demo_book(
             "status": res.order.status.value,
         })
 
+    # Seed 4 resting buy limit orders (bids) for 2-sided liquidity
+    bid_levels = [
+        (100, Decimal("2499.50")),
+        (150, Decimal("2499.00")),
+        (200, Decimal("2498.50")),
+        (50, Decimal("2498.00")),
+    ]
+    for qty, price in bid_levels:
+        order = Order(
+            order_id=f"ORD_SEED_BID_{qty}_{int(price)}",
+            account_id=maker_account,
+            symbol=sym,
+            side=Side.BUY,
+            order_type=OrderType.LIMIT,
+            product_type=ProductType.CNC,
+            quantity=qty,
+            price=price,
+        )
+        res = svc.place_order(order)
+        seeded_orders.append({
+            "order_id": order.order_id,
+            "quantity": qty,
+            "price": float(price),
+            "status": res.order.status.value,
+        })
+
     return {
         "status": "BOOK_SEEDED",
         "symbol": sym,

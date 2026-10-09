@@ -6,7 +6,6 @@ import { TopHeader } from "@/components/layout/TopHeader";
 import { AppStreamProvider } from "@/components/providers/AppStreamProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { JudgeDemoBar } from "@/components/layout/JudgeDemoBar";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -50,8 +49,6 @@ export default function RootLayout({
                   </main>
                 </div>
 
-                {/* 4 Key Judge Demo Moments Floating Bar */}
-                <JudgeDemoBar />
               </div>
             </AppStreamProvider>
           </TooltipProvider>

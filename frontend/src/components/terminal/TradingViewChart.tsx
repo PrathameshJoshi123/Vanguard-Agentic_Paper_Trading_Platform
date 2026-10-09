@@ -9,6 +9,7 @@ import {
   HistogramSeries,
   ColorType,
   Time,
+  TickMarkType,
 } from "lightweight-charts";
 import { useTradingStore } from "@/store/useTradingStore";
 import { useTheme } from "@/components/providers/ThemeProvider";
@@ -71,10 +72,44 @@ export function TradingViewChart() {
         vertLines: { color: gridColor },
         horzLines: { color: gridColor },
       },
+      localization: {
+        timeFormatter: (time: any) => {
+          const sec = typeof time === "number" ? time : Number(time);
+          if (isNaN(sec) || sec <= 0) return "";
+          const date = new Date(sec * 1000);
+          return date.toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          });
+        },
+      },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
         borderColor: borderColor,
+        tickMarkFormatter: (time: any, tickMarkType: TickMarkType) => {
+          const sec = typeof time === "number" ? time : Number(time);
+          if (isNaN(sec) || sec <= 0) return null;
+          const date = new Date(sec * 1000);
+          if (tickMarkType === TickMarkType.Time || tickMarkType === TickMarkType.TimeWithSeconds) {
+            return date.toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            });
+          } else if (tickMarkType === TickMarkType.DayOfMonth) {
+            return date.toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              day: "2-digit",
+              month: "short",
+            });
+          }
+          return null;
+        },
       },
       rightPriceScale: {
         borderColor: borderColor,
@@ -337,10 +372,11 @@ export function TradingViewChart() {
     const ltp = Number(marketDepth.ltp);
     if (isNaN(ltp) || ltp <= 0) return;
 
-    let tickSec = Math.floor(Date.now() / 1000);
+    const nowSec = Math.floor(Date.now() / 1000);
+    let tickSec = nowSec;
     if (marketDepth.timestamp) {
       const parsed = new Date(marketDepth.timestamp).getTime();
-      if (!isNaN(parsed) && parsed > 0) {
+      if (!isNaN(parsed) && Math.abs(nowSec - Math.floor(parsed / 1000)) < 86400) {
         tickSec = Math.floor(parsed / 1000);
       }
     }
@@ -376,7 +412,7 @@ export function TradingViewChart() {
       ? 1012.4
       : 1272.5;
 
-  const ltp = Number(marketDepth?.ltp || lastBarRef.current?.close || defaultPrice);
+  const ltp = Number(marketDepth?.ltp || defaultPrice);
 
   return (
     <div className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#18181b] p-4 shadow-xs">
