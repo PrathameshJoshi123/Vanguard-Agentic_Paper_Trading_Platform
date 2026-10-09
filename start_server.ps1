@@ -3,7 +3,7 @@ Write-Host "==========================================================" -Foregro
 Write-Host " Activating Virtual Environment and Starting Server...   " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-$VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$VenvPython = Join-Path $PSScriptRoot "venv\Scripts\python.exe"
 
 if (-Not (Test-Path $VenvPython)) {
     Write-Host "Error: Virtual environment python not found at $VenvPython" -ForegroundColor Red

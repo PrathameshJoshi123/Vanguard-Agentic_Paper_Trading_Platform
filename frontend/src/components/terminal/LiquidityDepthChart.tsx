@@ -23,24 +23,32 @@ export function LiquidityDepthChart() {
 
   // Build cumulative depth data
   const chartData = useMemo(() => {
+    const defaultPrice =
+      selectedSymbol === "TCS"
+        ? 2198.0
+        : selectedSymbol === "INFY"
+        ? 1012.4
+        : 1272.5;
+    const ltp = Number(marketDepth?.ltp || defaultPrice);
+
     const rawBids = marketDepth?.bids?.length
       ? [...marketDepth.bids].sort((a, b) => b.price - a.price)
       : [
-          { price: 2499.5, quantity: 120 },
-          { price: 2499.0, quantity: 240 },
-          { price: 2498.5, quantity: 380 },
-          { price: 2498.0, quantity: 510 },
-          { price: 2497.5, quantity: 650 },
+          { price: Number((ltp - 0.5).toFixed(2)), quantity: 120 },
+          { price: Number((ltp - 1.0).toFixed(2)), quantity: 240 },
+          { price: Number((ltp - 1.5).toFixed(2)), quantity: 380 },
+          { price: Number((ltp - 2.0).toFixed(2)), quantity: 510 },
+          { price: Number((ltp - 2.5).toFixed(2)), quantity: 650 },
         ];
 
     const rawAsks = marketDepth?.asks?.length
       ? [...marketDepth.asks].sort((a, b) => a.price - b.price)
       : [
-          { price: 2500.5, quantity: 150 },
-          { price: 2501.0, quantity: 270 },
-          { price: 2501.5, quantity: 390 },
-          { price: 2502.0, quantity: 480 },
-          { price: 2502.5, quantity: 610 },
+          { price: Number((ltp + 0.5).toFixed(2)), quantity: 150 },
+          { price: Number((ltp + 1.0).toFixed(2)), quantity: 270 },
+          { price: Number((ltp + 1.5).toFixed(2)), quantity: 390 },
+          { price: Number((ltp + 2.0).toFixed(2)), quantity: 480 },
+          { price: Number((ltp + 2.5).toFixed(2)), quantity: 610 },
         ];
 
     // Cumulative bids (from closest to farthest)
@@ -68,8 +76,8 @@ export function LiquidityDepthChart() {
     return [...bidPoints, ...askPoints];
   }, [marketDepth]);
 
-  const bestBid = marketDepth?.bids?.[0]?.price || 2499.5;
-  const bestAsk = marketDepth?.asks?.[0]?.price || 2500.5;
+  const bestBid = Number(marketDepth?.bids?.[0]?.price || 2499.5);
+  const bestAsk = Number(marketDepth?.asks?.[0]?.price || 2500.5);
   const spread = (bestAsk - bestBid).toFixed(2);
 
   return (

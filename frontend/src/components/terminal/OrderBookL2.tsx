@@ -13,30 +13,38 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
   const selectedSymbol = useTradingStore((s) => s.selectedSymbol);
   const marketDepth = useTradingStore((s) => s.marketDepth[selectedSymbol]);
 
+  const defaultPrice =
+    selectedSymbol === "TCS"
+      ? 2198.0
+      : selectedSymbol === "INFY"
+      ? 1012.4
+      : 1272.5;
+
+  const ltp = Number(marketDepth?.ltp || defaultPrice);
+
   // 5-depth levels
   const bids = marketDepth?.bids?.length
     ? marketDepth.bids.slice(0, 5)
     : [
-        { price: 2499.5, quantity: 120, orders: 12 },
-        { price: 2499.0, quantity: 240, orders: 18 },
-        { price: 2498.5, quantity: 380, orders: 24 },
-        { price: 2498.0, quantity: 510, orders: 31 },
-        { price: 2497.5, quantity: 650, orders: 42 },
+        { price: Number((ltp - 0.5).toFixed(2)), quantity: 120, orders: 12 },
+        { price: Number((ltp - 1.0).toFixed(2)), quantity: 240, orders: 18 },
+        { price: Number((ltp - 1.5).toFixed(2)), quantity: 380, orders: 24 },
+        { price: Number((ltp - 2.0).toFixed(2)), quantity: 510, orders: 31 },
+        { price: Number((ltp - 2.5).toFixed(2)), quantity: 650, orders: 42 },
       ];
 
   const asks = marketDepth?.asks?.length
     ? marketDepth.asks.slice(0, 5)
     : [
-        { price: 2500.5, quantity: 150, orders: 14 },
-        { price: 2501.0, quantity: 270, orders: 21 },
-        { price: 2501.5, quantity: 390, orders: 28 },
-        { price: 2502.0, quantity: 480, orders: 35 },
-        { price: 2502.5, quantity: 610, orders: 40 },
+        { price: Number((ltp + 0.5).toFixed(2)), quantity: 150, orders: 14 },
+        { price: Number((ltp + 1.0).toFixed(2)), quantity: 270, orders: 21 },
+        { price: Number((ltp + 1.5).toFixed(2)), quantity: 390, orders: 28 },
+        { price: Number((ltp + 2.0).toFixed(2)), quantity: 480, orders: 35 },
+        { price: Number((ltp + 2.5).toFixed(2)), quantity: 610, orders: 40 },
       ];
 
-  const ltp = marketDepth?.ltp || 2500.0;
-  const bestBid = bids[0]?.price || 2499.5;
-  const bestAsk = asks[0]?.price || 2500.5;
+  const bestBid = Number(bids[0]?.price || ltp - 0.5);
+  const bestAsk = Number(asks[0]?.price || ltp + 0.5);
   const spread = Math.max(0, Number((bestAsk - bestBid).toFixed(2)));
 
   const totalBuyQty = bids.reduce((acc, b) => acc + b.quantity, 0);
@@ -114,7 +122,7 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
                     type="button"
                     onClick={() => onSelectPrice?.(b.price)}
                     className="w-full text-left relative flex justify-between items-center px-3 py-2 hover:bg-emerald-500/10 transition-colors group cursor-pointer"
-                    title={`Click to fill price ₹${b.price.toFixed(2)} in order ticket`}
+                    title={`Click to fill price ₹${Number(b.price).toFixed(2)} in order ticket`}
                   >
                     {/* Depth Fill Bar */}
                     <div
@@ -122,7 +130,7 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
                       style={{ width: `${depthPct}%` }}
                     />
                     <span className="relative font-bold text-emerald-600 dark:text-emerald-400 group-hover:underline">
-                      ₹{b.price.toFixed(2)}
+                      ₹{Number(b.price).toFixed(2)}
                     </span>
                     <span className="relative text-slate-700 dark:text-zinc-300 text-[11px]">
                       {b.quantity.toLocaleString()}{" "}
@@ -151,7 +159,7 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
                     type="button"
                     onClick={() => onSelectPrice?.(a.price)}
                     className="w-full text-left relative flex justify-between items-center px-3 py-2 hover:bg-rose-500/10 transition-colors group cursor-pointer"
-                    title={`Click to fill price ₹${a.price.toFixed(2)} in order ticket`}
+                    title={`Click to fill price ₹${Number(a.price).toFixed(2)} in order ticket`}
                   >
                     {/* Depth Fill Bar */}
                     <div
@@ -159,7 +167,7 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
                       style={{ width: `${depthPct}%` }}
                     />
                     <span className="relative font-bold text-rose-600 dark:text-rose-400 group-hover:underline">
-                      ₹{a.price.toFixed(2)}
+                      ₹{Number(a.price).toFixed(2)}
                     </span>
                     <span className="relative text-slate-700 dark:text-zinc-300 text-[11px]">
                       {a.quantity.toLocaleString()}{" "}

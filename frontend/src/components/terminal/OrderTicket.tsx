@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Receipt,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 
 interface OrderTicketProps {
@@ -30,19 +31,30 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
   const accountId = useTradingStore((s) => s.accountId);
   const availableCash = useTradingStore((s) => s.cashSummary.available_cash);
   const marketDepth = useTradingStore((s) => s.marketDepth[selectedSymbol]);
+  const holdings = useTradingStore((s) => s.holdings);
   const addOrUpdateOrder = useTradingStore((s) => s.addOrUpdateOrder);
   const setCashSummary = useTradingStore((s) => s.setCashSummary);
   const cashSummary = useTradingStore((s) => s.cashSummary);
 
-  const ltp = marketDepth?.ltp || 2500.0;
+  const currentHolding =
+    holdings.find((h) => h.symbol.toUpperCase() === selectedSymbol.toUpperCase())?.quantity || 0;
+
+  const defaultPrice =
+    selectedSymbol === "TCS"
+      ? 2198.0
+      : selectedSymbol === "INFY"
+      ? 1012.4
+      : 1272.5;
+
+  const ltp = Number(marketDepth?.ltp || defaultPrice);
 
   // Form State
   const [side, setSide] = useState<Side>("BUY");
   const [productType, setProductType] = useState<ProductType>("MIS");
   const [orderType, setOrderType] = useState<OrderType>("LIMIT");
   const [quantity, setQuantity] = useState<number>(50);
-  const [price, setPrice] = useState<string>("2500.00");
-  const [triggerPrice, setTriggerPrice] = useState<string>("2495.00");
+  const [price, setPrice] = useState<string>(ltp.toFixed(2));
+  const [triggerPrice, setTriggerPrice] = useState<string>((ltp * 0.998).toFixed(2));
   const [showCharges, setShowCharges] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -52,10 +64,24 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
     details?: string;
   } | null>(null);
 
+  // Sync ticket default price when selected symbol changes
+  useEffect(() => {
+    const symPrice = Number(
+      marketDepth?.ltp ||
+        (selectedSymbol === "TCS"
+          ? 2198.0
+          : selectedSymbol === "INFY"
+          ? 1012.4
+          : 1272.5)
+    );
+    setPrice(symPrice.toFixed(2));
+    setTriggerPrice((symPrice * 0.998).toFixed(2));
+  }, [selectedSymbol]);
+
   // Sync selected price from depth book click
   useEffect(() => {
     if (selectedPrice !== undefined && selectedPrice !== null) {
-      setPrice(selectedPrice.toFixed(2));
+      setPrice(Number(selectedPrice).toFixed(2));
       if (orderType === "MARKET") {
         setOrderType("LIMIT");
       }
@@ -108,14 +134,26 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
         const tradesCount = res.trades ? res.trades.length : 0;
         const avgFill = Number(res.order.average_fill_price || numPrice);
 
-        setExecutionResult({
-          type: "SUCCESS",
-          message: `${side} ${res.order.filled_qty || quantity} ${selectedSymbol} [${res.order.status}]`,
-          details:
-            res.order.status === "FILLED"
-              ? `Matched ${tradesCount} trade leg(s) @ avg ₹${avgFill.toFixed(2)}`
-              : `Order placed in book with ID ${res.order.order_id.slice(0, 8)}`,
-        });
+        if (res.order.status === "CANCELLED") {
+          setExecutionResult({
+            type: "ERROR",
+            message: `${side} ${quantity} ${selectedSymbol} [CANCELLED]`,
+            details:
+              "Market order cancelled (IOC): No opposite resting liquidity in the book. Tip: Use a LIMIT order at the current market price to rest in the book and fill against live ticks.",
+          });
+        } else if (res.order.status === "FILLED") {
+          setExecutionResult({
+            type: "SUCCESS",
+            message: `${side} ${res.order.filled_qty || quantity} ${selectedSymbol} [FILLED]`,
+            details: `Matched ${tradesCount} trade leg(s) @ avg ₹${Number(avgFill).toFixed(2)}`,
+          });
+        } else {
+          setExecutionResult({
+            type: "SUCCESS",
+            message: `${side} ${quantity} ${selectedSymbol} [${res.order.status}]`,
+            details: `Order placed in book with ID ${res.order.order_id.slice(0, 10)}. Resting in queue waiting for match.`,
+          });
+        }
       }
     } catch (err: any) {
       setExecutionResult({
@@ -178,8 +216,13 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
 
         {/* Product Type (MIS vs CNC) */}
         <div>
-          <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1.5">
-            Product Mode
+          <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1.5 flex items-center justify-between">
+            <span>Product Mode</span>
+            {side === "SELL" && (
+              <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400">
+                Holding: <strong className={currentHolding > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>{currentHolding}</strong> shares
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -208,6 +251,54 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
             </button>
           </div>
         </div>
+
+        {/* System Architecture Rule Guidance: CNC vs MIS Short Selling */}
+        {side === "SELL" && productType === "CNC" && currentHolding === 0 && (
+          <div className="p-2.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 text-[11px] text-amber-900 dark:text-amber-200 space-y-1.5">
+            <div className="flex items-start gap-1.5 font-semibold">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <span>CNC Short Selling Prohibited</span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
+              Delivery selling requires settled shares in your Demat account (0 held). Switch to <strong>MIS</strong> to short sell intraday without owning shares.
+            </p>
+            <button
+              type="button"
+              onClick={() => setProductType("MIS")}
+              className="text-[10px] font-bold px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+            >
+              Switch to MIS (Intraday 5x)
+            </button>
+          </div>
+        )}
+
+        {side === "SELL" && productType === "CNC" && currentHolding > 0 && quantity > currentHolding && (
+          <div className="p-2.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 text-[11px] text-amber-900 dark:text-amber-200 space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Exceeds Demat Holdings</span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
+              You own {currentHolding} shares of {selectedSymbol}, but order is for {quantity} shares.
+            </p>
+            <button
+              type="button"
+              onClick={() => setQuantity(currentHolding)}
+              className="text-[10px] font-bold px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+            >
+              Cap Quantity to {currentHolding} Shares
+            </button>
+          </div>
+        )}
+
+        {side === "SELL" && productType === "MIS" && (
+          <div className="p-2 rounded-xl border border-sky-200 dark:border-sky-800/60 bg-sky-50 dark:bg-sky-950/30 text-[11px] text-sky-800 dark:text-sky-300 flex items-start gap-1.5">
+            <span className="text-sky-600 dark:text-sky-400 font-bold shrink-0">ℹ</span>
+            <p className="text-[10.5px] leading-relaxed">
+              <strong>Intraday Short Selling:</strong> Permitted without holdings. Requires 20% margin (5x leverage). Open positions auto-square off at <strong>15:20 IST</strong>.
+            </p>
+          </div>
+        )}
 
         {/* Order Type Tabs */}
         <div>
@@ -270,7 +361,7 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
               step="0.05"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder={`₹${ltp.toFixed(2)}`}
+              placeholder={`₹${Number(ltp).toFixed(2)}`}
             />
           </div>
         )}
@@ -311,6 +402,7 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
 
         {showCharges && (
           <ChargesPreview
+            symbol={selectedSymbol}
             side={side}
             productType={productType}
             price={numPrice}
@@ -322,9 +414,11 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
         {/* Submit Button */}
         <NorthstarPrimaryButton
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || (side === "SELL" && productType === "CNC" && quantity > currentHolding)}
           className={`w-full h-9 text-xs font-bold ${
-            side === "BUY"
+            side === "SELL" && productType === "CNC" && quantity > currentHolding
+              ? "!bg-slate-400 dark:!bg-zinc-700 text-white cursor-not-allowed opacity-70"
+              : side === "BUY"
               ? "!bg-emerald-600 hover:!bg-emerald-700 text-white"
               : "!bg-rose-600 hover:!bg-rose-700 text-white"
           }`}

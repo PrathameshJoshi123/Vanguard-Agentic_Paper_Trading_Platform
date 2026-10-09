@@ -99,7 +99,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
             {filteredTrades.map((trade) => {
               const formattedTime = new Date(trade.timestamp).toLocaleTimeString();
               const isBuy = trade.side === "BUY";
-              const turnover = trade.price * trade.quantity;
+              const turnover = Number(trade.price) * Number(trade.quantity);
               const isExpanded = expandedTradeId === trade.trade_id;
 
               return (
@@ -137,13 +137,13 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
                       </span>
                     </td>
                     <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900 dark:text-white">
-                      ₹{trade.price.toFixed(2)}
+                      ₹{Number(trade.price).toFixed(2)}
                     </td>
                     <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-700 dark:text-zinc-300">
                       {trade.quantity}
                     </td>
                     <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
-                      ₹{turnover.toFixed(2)}
+                      ₹{Number(turnover).toFixed(2)}
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       <span
@@ -178,7 +178,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
                             </div>
                             <div>
                               <span className="text-slate-400 dark:text-zinc-500 block">Total Settlement:</span>
-                              <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{turnover.toFixed(2)}</span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{Number(turnover).toFixed(2)}</span>
                             </div>
                             <div>
                               <span className="text-slate-400 dark:text-zinc-500 block">Contract Leg:</span>

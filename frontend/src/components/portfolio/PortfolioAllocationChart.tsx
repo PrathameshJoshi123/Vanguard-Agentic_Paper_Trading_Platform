@@ -55,7 +55,7 @@ export function PortfolioAllocationChart({
   // Build PnL by symbol for positions
   const pnlData = positions.map((p) => ({
     symbol: p.symbol,
-    pnl: Number(((p.realized_pnl || 0) + (p.unrealized_pnl || 0)).toFixed(2)),
+    pnl: Number(((Number(p.realized_pnl) || 0) + (Number(p.unrealized_pnl) || 0)).toFixed(2)),
   }));
 
   const displayPnl =

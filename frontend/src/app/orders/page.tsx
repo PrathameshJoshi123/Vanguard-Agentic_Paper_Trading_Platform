@@ -76,7 +76,7 @@ export default function OrdersPage() {
         id: o.order_id,
         title: `${o.side} ${o.symbol}`,
         subtitle: `${o.order_type} • ${o.product_type}`,
-        value: `₹${((o.price || 2500) * o.quantity).toLocaleString("en-IN", {
+        value: `₹${((Number(o.price) || 2500) * Number(o.quantity || 1)).toLocaleString("en-IN", {
           minimumFractionDigits: 2,
         })}`,
         secondaryValue: `${o.filled_qty || 0}/${o.quantity} shares`,
@@ -223,7 +223,7 @@ export default function OrdersPage() {
         <MetricCard
           title="Blocked Margin"
           badge="Reserve"
-          value={`₹${(cashSummary.blocked_margin || 0).toFixed(2)}`}
+          value={`₹${Number(cashSummary.blocked_margin || 0).toFixed(2)}`}
           hint="Reserved for resting limit orders"
           icon={<Lock className="w-3.5 h-3.5 text-slate-400" />}
         />

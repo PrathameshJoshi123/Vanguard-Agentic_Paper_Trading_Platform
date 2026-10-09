@@ -28,28 +28,24 @@ export function TopHeader() {
   const setFeedStatus = useTradingStore((s) => s.setFeedStatus);
   const setAuditReport = useTradingStore((s) => s.setAuditReport);
 
-  const [isTogglingFeed, setIsTogglingFeed] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
 
-  const handleToggleFeed = async () => {
-    const nextMode = feedStatus?.mode === "LIVE" ? "REPLAY" : "LIVE";
-    try {
-      setIsTogglingFeed(true);
-      const res = await api.setFeedMode(nextMode);
+  // Ensure backend feed mode is set to LIVE
+  React.useEffect(() => {
+    api.setFeedMode("LIVE").then((res) => {
       setFeedStatus(res);
-    } catch {
+    }).catch(() => {
       setFeedStatus({
-        mode: nextMode,
-        is_live: nextMode === "LIVE",
+        mode: "LIVE",
+        feed_mode: "LIVE",
+        is_live: true,
         active_symbol: selectedSymbol,
         tick_rate: 1.0,
         sequence_gap_count: 0,
         duplicate_count: 0,
       });
-    } finally {
-      setIsTogglingFeed(false);
-    }
-  };
+    });
+  }, [selectedSymbol, setFeedStatus]);
 
   const handleCrashReplay = async () => {
     try {
@@ -73,8 +69,6 @@ export function TopHeader() {
     }).format(val || 0);
   };
 
-  const isLive = feedStatus?.mode === "LIVE";
-
   return (
     <header className="h-14 bg-white dark:bg-[#121215] border-b border-slate-200/60 dark:border-zinc-800/80 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
       {/* Left Toolbar Controls */}
@@ -87,26 +81,15 @@ export function TopHeader() {
           onChange={(val) => setSelectedSymbol(val)}
         />
 
-        {/* Feed Mode Pill Button */}
-        <button
-          type="button"
-          disabled={isTogglingFeed}
-          onClick={handleToggleFeed}
+        {/* Permanent Live NSE Status Pill */}
+        <div
           style={CONTROL_SHADOW_STYLE}
-          className={`h-8 px-3.5 rounded-full border border-slate-200/80 dark:border-transparent text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 transition-all select-none ${
-            isLive
-              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/70"
-              : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70"
-          }`}
+          className="h-8 px-3.5 rounded-full border border-slate-200/80 dark:border-transparent text-xs font-medium inline-flex items-center gap-1.5 select-none bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
         >
-          <Radio
-            className={`w-3.5 h-3.5 ${
-              isLive ? "animate-pulse text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-            }`}
-          />
+          <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-600 dark:text-emerald-400" />
           <span className="text-slate-400 dark:text-zinc-500 font-normal">Feed:</span>
-          <span className="font-semibold">{isLive ? "LIVE NSE" : "OFFLINE REPLAY"}</span>
-        </button>
+          <span className="font-semibold tracking-wide">LIVE NSE</span>
+        </div>
       </div>
 
       {/* Right Toolbar: Account Metrics & System Integrity */}
@@ -169,7 +152,7 @@ export function TopHeader() {
               isReplaying ? "animate-spin" : ""
             }`}
           />
-          <span className="hidden sm:inline">Crash Replay</span>
+          <span className="hidden sm:inline">Crash Recovery</span>
         </button>
 
         {/* WebSocket Stream Indicator */}

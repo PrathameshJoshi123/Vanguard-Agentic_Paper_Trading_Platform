@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   Sparkles,
+  Columns3,
 } from "lucide-react";
 import { SELECTED_NAV_STYLE, CONTROL_SHADOW_STYLE } from "@/lib/design-system";
 import { useTheme } from "@/components/providers/ThemeProvider";
@@ -69,6 +70,17 @@ const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
+  {
+    groupTitle: "Workflows & CRM",
+    items: [
+      {
+        name: "Deals Kanban",
+        href: "/kanban",
+        icon: Columns3,
+        badge: "Northstar",
+      },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -88,7 +100,7 @@ export function Sidebar() {
             </div>
             <div className="min-w-0">
               <div className="text-sm font-bold text-slate-900 dark:text-white tracking-tight truncate flex items-center gap-1.5">
-                SYRUS-7
+                VanGuard
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <div className="text-xs text-slate-500 dark:text-zinc-400 truncate">

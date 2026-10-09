@@ -58,7 +58,7 @@ export function WhatIfSandbox() {
 
   // Selected stock's reference price
   const quote = marketDepth[selectedSymbol];
-  const referencePrice = quote?.ltp || 2500;
+  const referencePrice = Number(quote?.ltp || 2500);
   const simulatedTargetPrice = Number((referencePrice * (1 + shockPct / 100)).toFixed(2));
 
   const handleRunSimulation = async (queryOverride?: string) => {

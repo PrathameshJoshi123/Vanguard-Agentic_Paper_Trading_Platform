@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTradingStore } from "@/store/useTradingStore";
+import { api } from "@/lib/api";
 import { TradingViewChart } from "@/components/terminal/TradingViewChart";
 import { OrderBookL2 } from "@/components/terminal/OrderBookL2";
 import { OrderTicket } from "@/components/terminal/OrderTicket";
@@ -12,12 +13,37 @@ import { ArrowUpRight, ShieldCheck, Activity } from "lucide-react";
 export default function TradingTerminalPage() {
   const selectedSymbol = useTradingStore((s) => s.selectedSymbol);
   const marketDepth = useTradingStore((s) => s.marketDepth[selectedSymbol]);
+  const updateMarketDepth = useTradingStore((s) => s.updateMarketDepth);
 
   // Cross-component click-to-trade state
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
 
-  const ltp = marketDepth?.ltp || 2500.0;
-  const volume = marketDepth?.volume || 500000;
+  // Sync depth from REST API whenever symbol changes
+  useEffect(() => {
+    let isMounted = true;
+    api.getMarketDepth(selectedSymbol)
+      .then((depth) => {
+        if (isMounted && depth && depth.symbol) {
+          updateMarketDepth(depth);
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully if backend depth stream warming up
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSymbol, updateMarketDepth]);
+
+  const defaultBasePrice =
+    selectedSymbol === "TCS"
+      ? 2198.0
+      : selectedSymbol === "INFY"
+      ? 1012.4
+      : 1272.5;
+
+  const ltp = Number(marketDepth?.ltp || defaultBasePrice);
+  const volume = Number(marketDepth?.volume || 500000);
 
   return (
     <div className="space-y-5">

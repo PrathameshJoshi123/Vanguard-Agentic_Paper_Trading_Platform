@@ -53,26 +53,31 @@ export default function PortfolioPage() {
   // Aggregate stats
   const totalInvested = holdings.reduce((sum, h) => {
     const avg = Number(h.average_buy_price || h.average_price || 0);
-    return sum + avg * h.quantity;
+    return sum + avg * Number(h.quantity || 0);
   }, 0);
 
   const currentHoldingsValue = holdings.reduce((sum, h) => {
-    const ltp =
+    const ltp = Number(
       marketDepth[h.symbol]?.ltp ||
-      Number(h.average_buy_price || h.average_price || 0);
-    return sum + ltp * h.quantity;
+      h.average_buy_price ||
+      h.average_price ||
+      0
+    );
+    return sum + ltp * Number(h.quantity || 0);
   }, 0);
 
   const totalUnrealizedMtm = positions.reduce((sum, p) => {
-    if (p.quantity === 0) return sum + (p.unrealized_pnl || 0);
-    const ltp =
-      marketDepth[p.symbol]?.ltp || p.last_price || p.average_price || 0;
-    const mtm = (ltp - (p.average_price || 0)) * p.quantity;
+    const qty = Number(p.quantity || 0);
+    if (qty === 0) return sum + Number(p.unrealized_pnl || 0);
+    const ltp = Number(
+      marketDepth[p.symbol]?.ltp || p.last_price || p.average_price || 0
+    );
+    const mtm = (ltp - Number(p.average_price || 0)) * qty;
     return sum + mtm;
   }, 0);
 
   const totalRealizedPnl = positions.reduce(
-    (sum, p) => sum + (p.realized_pnl || 0),
+    (sum, p) => sum + Number(p.realized_pnl || 0),
     0
   );
 

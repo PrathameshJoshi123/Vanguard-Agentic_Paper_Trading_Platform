@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SYRUS-7 | Institutional Paper Trading Terminal",
+  title: "VanGuard | Institutional Paper Trading Terminal",
   description:
     "Production-Grade Indian Equity Paper Trading Engine with Real-Time L2 Market Depth and Agentic Intelligence",
 };

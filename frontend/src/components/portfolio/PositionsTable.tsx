@@ -120,20 +120,25 @@ export function PositionsTable({ positions, onRefresh }: PositionsTableProps) {
           </DataTableHead>
           <tbody>
             {filteredPositions.map((pos) => {
-              const currentLtp =
+              const currentLtp = Number(
                 marketDepth[pos.symbol]?.ltp ||
                 pos.last_price ||
                 pos.average_price ||
-                0;
+                0
+              );
 
-              const isLong = pos.quantity > 0;
-              const isShort = pos.quantity < 0;
+              const qty = Number(pos.quantity || 0);
+              const avgPrice = Number(pos.average_price || 0);
+              const realizedPnl = Number(pos.realized_pnl || 0);
+              const totalCharges = Number(pos.total_charges || 0);
+              const isLong = qty > 0;
+              const isShort = qty < 0;
               const liveMtm =
-                pos.quantity !== 0
-                  ? (currentLtp - (pos.average_price || 0)) * pos.quantity
-                  : pos.unrealized_pnl || 0;
+                qty !== 0
+                  ? (currentLtp - avgPrice) * qty
+                  : Number(pos.unrealized_pnl || 0);
 
-              const netPnl = (pos.realized_pnl || 0) + liveMtm - (pos.total_charges || 0);
+              const netPnl = realizedPnl + liveMtm - totalCharges;
 
               return (
                 <DataTableRow key={`${pos.symbol}-${pos.product_type}`}>
@@ -162,26 +167,26 @@ export function PositionsTable({ positions, onRefresh }: PositionsTableProps) {
                           : "text-slate-500"
                       }
                     >
-                      {pos.quantity > 0 ? `+${pos.quantity}` : pos.quantity}
+                      {qty > 0 ? `+${qty}` : qty}
                     </span>
                   </td>
                   <td className="py-2.5 px-4 text-right font-mono text-slate-700 dark:text-zinc-300">
-                    ₹{(pos.average_price || 0).toFixed(2)}
+                    ₹{avgPrice.toFixed(2)}
                   </td>
                   <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900 dark:text-white">
                     ₹{currentLtp.toFixed(2)}
                   </td>
                   <td
                     className={`py-2.5 px-4 text-right font-mono font-semibold ${
-                      (pos.realized_pnl || 0) > 0
+                      realizedPnl > 0
                         ? "text-emerald-600 dark:text-emerald-400"
-                        : (pos.realized_pnl || 0) < 0
+                        : realizedPnl < 0
                         ? "text-rose-600 dark:text-rose-400"
                         : "text-slate-500"
                     }`}
                   >
-                    {(pos.realized_pnl || 0) > 0 ? "+" : ""}
-                    ₹{(pos.realized_pnl || 0).toFixed(2)}
+                    {realizedPnl > 0 ? "+" : ""}
+                    ₹{realizedPnl.toFixed(2)}
                   </td>
                   <td
                     className={`py-2.5 px-4 text-right font-mono font-semibold ${

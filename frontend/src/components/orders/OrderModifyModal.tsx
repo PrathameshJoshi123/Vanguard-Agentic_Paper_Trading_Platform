@@ -27,16 +27,16 @@ export function OrderModifyModal({
   onSuccess,
 }: OrderModifyModalProps) {
   const accountId = useTradingStore((s) => s.accountId);
-  const [newQty, setNewQty] = useState<number>(order ? order.quantity : 1);
-  const [newPrice, setNewPrice] = useState<number>(order?.price ? order.price : 100);
+  const [newQty, setNewQty] = useState<number>(order ? Number(order.quantity) : 1);
+  const [newPrice, setNewPrice] = useState<number>(order?.price ? Number(order.price) : 100);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Sync state when order prop changes
   React.useEffect(() => {
     if (order) {
-      setNewQty(order.quantity);
-      setNewPrice(order.price || 100);
+      setNewQty(Number(order.quantity));
+      setNewPrice(Number(order.price) || 100);
       setErrorMsg(null);
     }
   }, [order]);
@@ -66,7 +66,7 @@ export function OrderModifyModal({
 
   if (!order) return null;
 
-  const originalTurnover = (order.price || 0) * order.quantity;
+  const originalTurnover = (Number(order.price) || 0) * Number(order.quantity);
   const newTurnover = newPrice * newQty;
   const turnoverDelta = newTurnover - originalTurnover;
 
@@ -111,7 +111,7 @@ export function OrderModifyModal({
             {order.side} {order.symbol} • {order.product_type}
           </span>
           <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500">
-            Current: {order.quantity} @ ₹{(order.price || 0).toFixed(2)}
+            Current: {order.quantity} @ ₹{Number(order.price || 0).toFixed(2)}
           </span>
         </div>
 

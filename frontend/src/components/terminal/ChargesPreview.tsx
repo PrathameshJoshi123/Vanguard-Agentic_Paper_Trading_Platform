@@ -8,6 +8,7 @@ import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
 import { AlertCircle, CheckCircle2, Receipt } from "lucide-react";
 
 interface ChargesPreviewProps {
+  symbol?: string;
   side: Side;
   productType: ProductType;
   price: number;
@@ -16,6 +17,7 @@ interface ChargesPreviewProps {
 }
 
 export function ChargesPreview({
+  symbol = "RELIANCE",
   side,
   productType,
   price,
@@ -42,7 +44,7 @@ export function ChargesPreview({
       try {
         const res = await api.previewMarginAndCharges({
           account_id: "DEFAULT",
-          symbol: "RELIANCE",
+          symbol: symbol || "RELIANCE",
           side,
           order_type: "LIMIT",
           product_type: productType,

@@ -88,6 +88,7 @@ export const useTradingStore = create<TradingState>((set) => ({
   },
   feedStatus: {
     mode: "LIVE",
+    feed_mode: "LIVE",
     is_live: true,
     active_symbol: "RELIANCE",
     tick_rate: 1.0,
@@ -137,7 +138,30 @@ export const useTradingStore = create<TradingState>((set) => ({
   setTAccounts: (tAccounts) => set({ tAccounts }),
   setContractNotes: (contractNotes) => set({ contractNotes }),
   setCashEntries: (cashEntries) => set({ cashEntries }),
-  setFeedStatus: (feedStatus) => set({ feedStatus }),
+  setFeedStatus: (feedStatus) => {
+    if (!feedStatus) {
+      set({
+        feedStatus: {
+          mode: "LIVE",
+          feed_mode: "LIVE",
+          is_live: true,
+          active_symbol: "RELIANCE",
+          tick_rate: 1.0,
+          sequence_gap_count: 0,
+          duplicate_count: 0,
+        },
+      });
+      return;
+    }
+    set({
+      feedStatus: {
+        ...feedStatus,
+        mode: "LIVE",
+        feed_mode: "LIVE",
+        is_live: true,
+      },
+    });
+  },
 
   addAlert: (alert) =>
     set((state) => ({

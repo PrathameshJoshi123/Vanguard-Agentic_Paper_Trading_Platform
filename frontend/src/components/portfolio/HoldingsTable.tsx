@@ -98,11 +98,14 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
           </DataTableHead>
           <tbody>
             {filteredHoldings.map((h) => {
-              const currentLtp =
+              const currentLtp = Number(
                 marketDepth[h.symbol]?.ltp ||
-                (h.average_buy_price ? Number(h.average_buy_price) : 0);
+                h.average_buy_price ||
+                h.average_price ||
+                0
+              );
               const avgPrice = Number(h.average_buy_price || h.average_price || 0);
-              const qty = h.quantity;
+              const qty = Number(h.quantity || 0);
 
               const invested = avgPrice * qty;
               const currentValue = currentLtp * qty;

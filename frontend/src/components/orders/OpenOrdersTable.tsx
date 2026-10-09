@@ -172,10 +172,10 @@ export function OpenOrdersTable({ orders, onRefresh }: OpenOrdersTableProps) {
                       {order.filled_qty || 0} / {order.quantity}
                     </td>
                     <td className="py-2.5 px-4 text-right font-mono text-slate-700 dark:text-zinc-300">
-                      ₹{(order.price || 0).toFixed(2)}
+                      ₹{Number(order.price || 0).toFixed(2)}
                     </td>
                     <td className="py-2.5 px-4 text-right font-mono text-slate-500 dark:text-zinc-400">
-                      {order.trigger_price ? `₹${order.trigger_price.toFixed(2)}` : "—"}
+                      {order.trigger_price ? `₹${Number(order.trigger_price).toFixed(2)}` : "—"}
                     </td>
                     <td className="py-2.5 px-4">
                       <span

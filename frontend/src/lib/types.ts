@@ -129,11 +129,16 @@ export interface AgentAlert {
 
 export interface FeedStatus {
   mode: "LIVE" | "REPLAY";
+  feed_mode?: "LIVE" | "REPLAY";
   is_live: boolean;
-  active_symbol: string;
-  tick_rate: number;
-  sequence_gap_count: number;
-  duplicate_count: number;
+  active_symbol?: string;
+  is_running?: boolean;
+  symbols_tracked?: string[];
+  tick_rate?: number;
+  sequence_gap_count?: number;
+  duplicate_count?: number;
+  health?: Record<string, unknown>;
+  message?: string;
 }
 
 export interface CreateOrderPayload {
