@@ -27,10 +27,14 @@ def get_market_gateway() -> MarketDataGateway:
     global _market_gateway
     if _market_gateway is None:
         svc = get_trade_service()
+        from src.market_data.depth_matcher import MarketDepthMatcher
+        depth_matcher = MarketDepthMatcher(svc)
+        svc.depth_matcher = depth_matcher
         _market_gateway = MarketDataGateway(
             replay_mode=True,
             replay_file_path="data/reliance_50_ticks.jsonl",
             replay_speed_multiplier=1.5,
+            depth_matcher=depth_matcher,
             event_bus=get_event_bus(),
             position_manager=svc.position_manager,
         )

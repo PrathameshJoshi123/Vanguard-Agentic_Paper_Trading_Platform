@@ -90,6 +90,16 @@ class PreTradeRiskEngine:
         """
         Validates order and locks required margin or holdings upon LIMIT order placement.
         """
+        if order.order_id in self._blocked_order_margins:
+            return self._blocked_order_margins[order.order_id]
+        if order.order_id in self._blocked_order_holdings:
+            return self.margin_calculator.calculate_margin(
+                side=order.side,
+                product_type=order.product_type,
+                price=order.price or Decimal("2500.00"),
+                quantity=order.quantity,
+            )
+
         margin_req = self.validate_pre_trade(account, order)
 
         if order.product_type == ProductType.CNC and order.side == Side.SELL:

@@ -1,0 +1,98 @@
+{
+  "summary": {},
+  "l1_delivery": {
+    "status": "PASSED",
+    "order_placement": "VERIFIED",
+    "order_modification": "VERIFIED",
+    "order_cancellation": "VERIFIED",
+    "maker_taker_fills": "VERIFIED",
+    "trade_execution": "VERIFIED",
+    "delivery_holdings": "VERIFIED (10 shares @ \u20b92500.00)"
+  },
+  "l2_depth_and_sl": {
+    "status": "PASSED",
+    "stop_loss_trigger_pending": "VERIFIED",
+    "stop_loss_cancellation": "VERIFIED",
+    "depth_retrieval": "VERIFIED",
+    "book_walking_multi_level": "VERIFIED"
+  },
+  "l3_mis_and_charges": {
+    "status": "PASSED",
+    "margin_shortage_rejection": "VERIFIED",
+    "mis_5x_leverage": "VERIFIED",
+    "charges_contract_note": "VERIFIED",
+    "auto_squareoff_1520": "VERIFIED"
+  },
+  "ledger_audit": {
+    "status": "PASSED",
+    "double_entry_equilibrium": "ZERO_DISCREPANCY (\u20b90.00)",
+    "cash_running_balance": "EXACT_PAISA_MATCH",
+    "order_trade_consistency": "100% VERIFIED",
+    "position_trade_match": "100% VERIFIED"
+  },
+  "crash_recovery": {
+    "status": "PASSED",
+    "recovery_time_ms": 676.9,
+    "discrepancy_rupees": "0.00",
+    "reconstructed_orders": 1,
+    "reconstructed_trades": 0,
+    "state_integrity": "100% DETERMINISTIC"
+  },
+  "load_testing": {
+    "status": "PASSED",
+    "concurrent_users": 20,
+    "total_requests": 200,
+    "successful_requests": 200,
+    "failed_requests": 0,
+    "success_rate_pct": 100.0,
+    "total_time_seconds": 0.97,
+    "throughput_rps": 205.18
+  },
+  "latency_benchmarks": {
+    "order_placement": {
+      "min": 2.466,
+      "avg": 3.298,
+      "p50": 2.953,
+      "p90": 4.365,
+      "p95": 5.194,
+      "p99": 7.647,
+      "max": 7.647
+    },
+    "order_query": {
+      "min": 3.364,
+      "avg": 7.27,
+      "p50": 7.183,
+      "p90": 10.712,
+      "p95": 12.208,
+      "p99": 12.602,
+      "max": 12.602
+    },
+    "order_cancellation": {
+      "min": 2.282,
+      "avg": 2.946,
+      "p50": 2.796,
+      "p90": 3.797,
+      "p95": 3.871,
+      "p99": 5.241,
+      "max": 5.241
+    },
+    "market_depth_query": {
+      "min": 3.302,
+      "avg": 7.26,
+      "p50": 6.837,
+      "p90": 10.957,
+      "p95": 12.506,
+      "p99": 14.494,
+      "max": 14.494
+    },
+    "audit_reconcile": {
+      "min": 3.486,
+      "avg": 7.22,
+      "p50": 7.01,
+      "p90": 10.589,
+      "p95": 12.075,
+      "p99": 13.648,
+      "max": 13.648
+    }
+  }
+}

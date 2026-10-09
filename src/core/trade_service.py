@@ -3,7 +3,7 @@ from typing import Optional, List, Dict
 import uuid
 from pydantic import BaseModel
 
-from src.common.types import Side, ProductType, OrderStatus
+from src.common.types import Side, ProductType, OrderStatus, OrderType
 from src.common.money import to_money
 from src.common.exceptions import InvalidOrderError, OrderNotFoundError
 from src.core.models import Order, TradeEvent, MatchResult
@@ -52,6 +52,7 @@ class TradeExecutionService:
         self._accounts: Dict[str, AccountRiskState] = {}
         self._orders: Dict[str, Order] = {}
         self._trades: List[TradeEvent] = []
+        self.depth_matcher: Optional[Any] = None
 
     def reset_state(self) -> None:
         """Simulates clean shutdown or crash by resetting in-memory execution structures."""
@@ -144,7 +145,27 @@ class TradeExecutionService:
             payload=order.model_dump(mode="json"),
         )
 
-        # 2. Match order against book
+        # 2. Check for Stop-Loss orders (SL / SL_M)
+        if order.order_type in (OrderType.SL, OrderType.SL_M):
+            if order.status != OrderStatus.TRIGGER_PENDING:
+                self.matching_engine.state_machine.transition(
+                    order,
+                    target_status=OrderStatus.TRIGGER_PENDING,
+                    reason="Resting in trigger monitor awaiting market price.",
+                )
+            if self.depth_matcher is None:
+                from src.market_data.depth_matcher import MarketDepthMatcher
+                self.depth_matcher = MarketDepthMatcher(self)
+            self.depth_matcher.register_trigger_order(order)
+            return TradeExecutionResult(
+                order=order,
+                match_result=MatchResult(taker_order=order),
+                trade_charges=[],
+                positions=self.position_manager.get_positions(order.account_id),
+                account_running_balance=account.cash_balance,
+            )
+
+        # 3. Match order against book
         match_result = self.matching_engine.place_order(order)
         taker_order = match_result.taker_order
         self._orders[taker_order.order_id] = taker_order
@@ -277,10 +298,21 @@ class TradeExecutionService:
         """Cancels resting order and releases blocked margin."""
         account = self.get_account(account_id)
         order = self._orders.get(order_id)
-        if order and order.account_id != account_id:
+        if not order:
+            raise OrderNotFoundError(f"Order '{order_id}' not found.")
+        if order.account_id != account_id:
             raise InvalidOrderError(f"Order '{order_id}' does not belong to account '{account_id}'.")
 
-        cancelled_order = self.matching_engine.cancel_order(symbol, order_id)
+        if order.status == OrderStatus.TRIGGER_PENDING:
+            self.matching_engine.state_machine.transition(
+                order,
+                target_status=OrderStatus.CANCELLED,
+                reason="User cancelled trigger pending order.",
+            )
+            cancelled_order = order
+        else:
+            cancelled_order = self.matching_engine.cancel_order(symbol, order_id)
+
         self.risk_engine.release_margin_for_order(account, order_id, symbol)
         self._orders[cancelled_order.order_id] = cancelled_order
 
@@ -319,6 +351,7 @@ class TradeExecutionService:
         order_id: str,
         new_quantity: Optional[int] = None,
         new_price: Optional[Decimal] = None,
+        new_trigger_price: Optional[Decimal] = None,
     ) -> Order:
         """
         Modifies resting order quantity or price.
@@ -342,6 +375,8 @@ class TradeExecutionService:
             tentative_order.remaining_qty = new_quantity - order.filled_qty
         if new_price is not None:
             tentative_order.price = to_money(new_price)
+        if new_trigger_price is not None:
+            tentative_order.trigger_price = to_money(new_trigger_price)
 
         # Release existing blocked margin and attempt to re-block with modified order
         self.risk_engine.release_margin_for_order(account, order_id, symbol)
@@ -352,12 +387,22 @@ class TradeExecutionService:
             self.risk_engine.block_margin_for_order(account, order)
             raise
 
-        modified_order = self.matching_engine.modify_order(
-            symbol=symbol,
-            order_id=order_id,
-            new_quantity=new_quantity,
-            new_price=new_price,
-        )
+        if order.status == OrderStatus.TRIGGER_PENDING:
+            if new_quantity is not None:
+                order.quantity = new_quantity
+                order.remaining_qty = new_quantity - order.filled_qty
+            if new_price is not None:
+                order.price = to_money(new_price)
+            if new_trigger_price is not None:
+                order.trigger_price = to_money(new_trigger_price)
+            modified_order = order
+        else:
+            modified_order = self.matching_engine.modify_order(
+                symbol=symbol,
+                order_id=order_id,
+                new_quantity=new_quantity,
+                new_price=new_price,
+            )
         self._orders[modified_order.order_id] = modified_order
 
         # Emit ORDER_MODIFIED

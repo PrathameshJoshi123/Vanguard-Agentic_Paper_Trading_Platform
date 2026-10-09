@@ -16,7 +16,9 @@ from src.api.routers import (
     settlement_router,
     market_router,
     system_router,
+    zero21_router,
 )
+
 from src.api.websocket import websocket_router, ws_manager
 from src.api.dependencies import get_trade_service, get_market_gateway
 from src.agentic.monitor.event_monitor import AutonomousEventMonitor
@@ -101,6 +103,11 @@ def create_app() -> FastAPI:
         v1_router.include_router(market_router)
         v1_router.include_router(system_router)
         app.include_router(v1_router)
+
+    # 021 Trade Developer Sandbox Official Hackathon Contract Endpoints
+    app.include_router(zero21_router, prefix="/api/developer-api/v1")
+    app.include_router(zero21_router, prefix="/developer-api/v1")
+
 
     @app.get("/health", tags=["Health"])
     def health_check():

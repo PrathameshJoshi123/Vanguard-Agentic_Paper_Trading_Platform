@@ -18,6 +18,10 @@ class Position(BaseModel):
     total_charges: Decimal = Decimal("0.00")# Total incurred regulatory charges & brokerage
 
     @property
+    def average_entry_price(self) -> Decimal:
+        return self.average_price
+
+    @property
     def is_open(self) -> bool:
         return self.quantity != 0
 

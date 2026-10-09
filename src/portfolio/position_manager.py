@@ -36,6 +36,10 @@ class PositionManager:
     def get_holding(self, account_id: str, symbol: str) -> Optional[Holding]:
         return self._holdings.get((account_id, symbol))
 
+    def get_holdings(self, account_id: str) -> List[Holding]:
+        """Retrieves all delivery holdings for an account."""
+        return [h for h in self._holdings.values() if h.account_id == account_id]
+
     def apply_trade(
         self,
         account_id: str,

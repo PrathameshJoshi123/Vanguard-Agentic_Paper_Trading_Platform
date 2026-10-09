@@ -64,6 +64,15 @@ class Order(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    # 021 exchange metadata fields
+    token: Optional[int] = None
+    exchange: Optional[str] = "NSECM"
+    book: Optional[str] = "RL"
+    validity: Optional[str] = "DAY"
+    amo: Optional[bool] = False
+
+    model_config = {"extra": "allow"}
+
     @model_validator(mode="after")
     def validate_order(self) -> "Order":
         if self.order_type == OrderType.LIMIT:

@@ -7,6 +7,7 @@ from src.market_data.normalizer import MarketDepthNormalizer
 from src.market_data.sequence_manager import SequenceManager
 from src.market_data.replay_engine import ReplayEngine
 from src.market_data.live_feed import LiveNSEFeedHandler
+from src.market_data.zero21.feed import Zero21MarketFeedHandler
 from src.market_data.depth_matcher import MarketDepthMatcher, TriggeredOrderResult
 
 from src.events.bus import InMemoryEventBus, default_event_bus
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 class MarketDataGateway:
     """
     Unified Dual-Mode Market Data Gateway:
-      - Live Mode: Connects to Live NSE quote endpoint.
+      - Live Mode: Connects to 021 Trade Developer Sandbox binary WebSocket feed.
       - Replay Mode: Reads historical ticks from .jsonl file with configurable speed.
       - Sequence & Resilience Management: Drops duplicates, checks order, tracks gaps.
       - Integrates with MarketDepthMatcher to trigger SL/SL-M orders and cross resting limits.
@@ -45,7 +46,10 @@ class MarketDataGateway:
 
         self.sequence_manager = SequenceManager()
         self.live_feed = LiveNSEFeedHandler()
+        self.zero21_feed = Zero21MarketFeedHandler(sequence_manager=self.sequence_manager)
+        self.zero21_feed.add_callback(self._on_zero21_tick)
         self.replay_engine: Optional[ReplayEngine] = None
+
 
         if self.replay_file_path:
             self.replay_engine = ReplayEngine(
@@ -200,15 +204,30 @@ class MarketDataGateway:
             await asyncio.sleep(1.0)
         return ticks_processed
 
+    def _on_zero21_tick(self, depth: MarketDepth) -> None:
+        """Callback invoked when Zero21MarketFeedHandler parses and validates a tick."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.ingest_tick(depth))
+        except RuntimeError:
+            pass
+
     async def start(self, symbols: Optional[List[str]] = None) -> None:
         """Starts background feed consumption."""
         self._running = True
+        target_symbols = symbols or ["RELIANCE"]
+
         if self.replay_mode:
             self._task = asyncio.create_task(self.run_replay())
         else:
-            if not symbols:
-                symbols = ["RELIANCE"]
-            self._task = asyncio.create_task(self._run_live_loop(symbols))
+            if self.zero21_feed.config.is_configured:
+                logger.info(f"Starting 021 Live Market Feed for symbols: {target_symbols}")
+                for sym in target_symbols:
+                    self.zero21_feed.subscribe_symbol(sym)
+                await self.zero21_feed.start()
+            else:
+                logger.info("021 credentials not configured; falling back to resilient NSE loop.")
+                self._task = asyncio.create_task(self._run_live_loop(target_symbols))
 
     async def _run_live_loop(self, symbols: List[str]) -> None:
         """Runs the live polling loop across subscribed symbols."""
@@ -222,6 +241,7 @@ class MarketDataGateway:
     async def stop(self) -> None:
         """Stops background feed processing and cleans up resources."""
         self._running = False
+        await self.zero21_feed.stop()
         if self._task and not self._task.done():
             self._task.cancel()
             try:
@@ -229,3 +249,4 @@ class MarketDataGateway:
             except asyncio.CancelledError:
                 pass
         await self.live_feed.close()
+

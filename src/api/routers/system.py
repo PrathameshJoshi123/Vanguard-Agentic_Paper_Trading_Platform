@@ -19,6 +19,11 @@ from src.api.dependencies import (
 router = APIRouter(prefix="/system", tags=["System & Resilience"])
 
 
+@router.get("/health")
+def system_health_check():
+    return {"status": "ok", "engine": "online", "mode": "in-memory-deterministic"}
+
+
 class CrashReplayRequest(BaseModel):
     account_id: str = Field(default="DEFAULT", description="Trading account ID to reconstruct")
 
