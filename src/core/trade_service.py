@@ -84,13 +84,36 @@ class TradeExecutionService:
             )
             self.event_bus.publish_nowait(event)
 
-    def register_account(self, account_id: str, initial_deposit: Decimal = Decimal("0.00")) -> AccountRiskState:
+    def _emit_latest_double_entry_transactions(self, count: int = 1) -> None:
+        if not self.event_bus:
+            return
+        txns = self.ledger.get_double_entry_journal()
+        if not txns:
+            return
+        for txn in txns[-count:]:
+            self._emit(
+                event_type=DomainEventType.DOUBLE_ENTRY_TXN_RECORDED,
+                entity_type="DOUBLE_ENTRY_TXN",
+                entity_id=txn.transaction_id,
+                account_id=None,
+                payload=txn.model_dump(mode="json"),
+            )
+
+    def register_account(self, account_id: str, initial_deposit: Decimal = Decimal("1000000.00")) -> AccountRiskState:
         """Registers a trading account and records initial cash deposit in ledger."""
         state = AccountRiskState(account_id=account_id)
         self._accounts[account_id] = state
         if initial_deposit > Decimal("0.00"):
-            self.ledger.deposit_cash(account_id, initial_deposit, reference_id="INITIAL_FUNDING")
+            entry = self.ledger.deposit_cash(account_id, initial_deposit, reference_id="INITIAL_FUNDING")
             state.cash_balance = self.ledger.get_running_balance(account_id)
+            self._emit(
+                event_type=DomainEventType.LEDGER_ENTRY_RECORDED,
+                entity_type="LEDGER",
+                entity_id=entry.entry_id,
+                account_id=account_id,
+                payload=entry.model_dump(mode="json"),
+            )
+            self._emit_latest_double_entry_transactions(1)
         return state
 
     def get_account(self, account_id: str) -> AccountRiskState:
@@ -188,11 +211,19 @@ class TradeExecutionService:
                 collected_charges.append(trade_charges)
 
                 # Debit statutory charges from ledger
-                self.ledger.record_trade_charges(
+                charge_entries = self.ledger.record_trade_charges(
                     account_id=account.account_id,
                     trade_id=trade_event.trade_id,
                     charges=trade_charges,
                 )
+                for ce in charge_entries:
+                    self._emit(
+                        event_type=DomainEventType.LEDGER_ENTRY_RECORDED,
+                        entity_type="LEDGER",
+                        entity_id=ce.entry_id,
+                        account_id=account.account_id,
+                        payload=ce.model_dump(mode="json"),
+                    )
 
                 # Update position & book realized P&L
                 pos, realized_pnl = self.position_manager.apply_trade(
@@ -207,11 +238,19 @@ class TradeExecutionService:
                 if taker_order.product_type == ProductType.MIS:
                     # Settle Realized P&L into cash ledger
                     if realized_pnl != Decimal("0.00"):
-                        self.ledger.record_realized_pnl(
+                        pnl_entry = self.ledger.record_realized_pnl(
                             account_id=account.account_id,
                             trade_id=trade_event.trade_id,
                             realized_pnl=realized_pnl,
                         )
+                        if pnl_entry:
+                            self._emit(
+                                event_type=DomainEventType.LEDGER_ENTRY_RECORDED,
+                                entity_type="LEDGER",
+                                entity_id=pnl_entry.entry_id,
+                                account_id=account.account_id,
+                                payload=pnl_entry.model_dump(mode="json"),
+                            )
 
                     # Release pro-rata blocked margin for filled portion
                     self.risk_engine.release_partial_blocked_margin(
@@ -232,11 +271,18 @@ class TradeExecutionService:
                 else:
                     # CNC Delivery Settlement
                     turnover = to_money(trade_event.price * Decimal(trade_event.quantity))
-                    self.ledger.record_cnc_settlement(
+                    cnc_entry = self.ledger.record_cnc_settlement(
                         account_id=account.account_id,
                         trade_id=trade_event.trade_id,
                         side=trade_event.side,
                         amount=turnover,
+                    )
+                    self._emit(
+                        event_type=DomainEventType.LEDGER_ENTRY_RECORDED,
+                        entity_type="LEDGER",
+                        entity_id=cnc_entry.entry_id,
+                        account_id=account.account_id,
+                        payload=cnc_entry.model_dump(mode="json"),
                     )
                     self.risk_engine.release_partial_blocked_margin(
                         account=account,
@@ -244,6 +290,17 @@ class TradeExecutionService:
                         filled_qty=trade_event.quantity,
                         total_order_qty=taker_order.quantity,
                     )
+
+                    # Sync and emit delivery holding
+                    holding = self.position_manager.get_holding(account.account_id, taker_order.symbol)
+                    if holding:
+                        self._emit(
+                            event_type=DomainEventType.HOLDING_UPDATED,
+                            entity_type="HOLDING",
+                            entity_id=f"{account.account_id}_{taker_order.symbol}",
+                            account_id=account.account_id,
+                            payload=holding.model_dump(mode="json"),
+                        )
 
                 # Emit TRADE_EXECUTED
                 trade_dict = trade_event.model_dump(mode="json")
@@ -264,6 +321,9 @@ class TradeExecutionService:
                     account_id=account.account_id,
                     payload=pos.model_dump(mode="json"),
                 )
+
+                # Emit Double-Entry balanced T-Account transactions
+                self._emit_latest_double_entry_transactions(2)
 
         # If order was partially filled or IOC cancelled unfilled remainder, release remaining margin
         if taker_order.status == OrderStatus.CANCELLED:

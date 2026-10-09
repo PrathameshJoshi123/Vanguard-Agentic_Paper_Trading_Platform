@@ -11,7 +11,12 @@ from src.storage.database import AsyncSessionLocal
 from src.storage.models.order import OrderModel
 from src.storage.models.trade import TradeModel
 from src.storage.models.position import PositionModel, HoldingModel
-from src.storage.models.ledger import CustomerCashEntryModel
+from src.storage.models.ledger import (
+    CustomerCashEntryModel,
+    DoubleEntryTransactionModel,
+    DoubleEntryLegModel,
+)
+from src.storage.models.account import AccountModel
 from src.storage.models.event_log import EventLogModel
 from sqlalchemy import select
 
@@ -178,22 +183,95 @@ class DatabasePersistenceWorker:
                             )
                             res = await session.execute(stmt)
                             pos = res.scalar_one_or_none()
+                            avg_px = Decimal(str(p.get("average_price") or p.get("average_buy_price") or "0.00"))
+                            tot_chg = Decimal(str(p.get("total_charges", "0.00")))
                             if not pos:
                                 pos = PositionModel(
                                     account_id=account_id,
                                     symbol=symbol,
                                     product_type=product_type,
                                     quantity=p.get("quantity", 0),
-                                    average_buy_price=Decimal(str(p.get("average_buy_price", "0.00"))),
+                                    average_price=avg_px,
                                     realized_pnl=Decimal(str(p.get("realized_pnl", "0.00"))),
                                     unrealized_pnl=Decimal(str(p.get("unrealized_pnl", "0.00"))),
+                                    total_charges=tot_chg,
                                 )
                                 session.add(pos)
                             else:
                                 pos.quantity = p.get("quantity", pos.quantity)
-                                pos.average_buy_price = Decimal(str(p.get("average_buy_price", pos.average_buy_price)))
+                                pos.average_price = avg_px
                                 pos.realized_pnl = Decimal(str(p.get("realized_pnl", pos.realized_pnl)))
                                 pos.unrealized_pnl = Decimal(str(p.get("unrealized_pnl", pos.unrealized_pnl)))
+                                pos.total_charges = tot_chg
+
+                    elif event.event_type == DomainEventType.HOLDING_UPDATED:
+                        p = event.payload
+                        account_id = p.get("account_id", "DEFAULT")
+                        symbol = p.get("symbol")
+                        if symbol:
+                            stmt = select(HoldingModel).where(
+                                HoldingModel.account_id == account_id,
+                                HoldingModel.symbol == symbol,
+                            )
+                            res = await session.execute(stmt)
+                            holding = res.scalar_one_or_none()
+                            avg_buy = Decimal(str(p.get("average_buy_price", "0.00")))
+                            qty_val = p.get("quantity", 0)
+                            if not holding:
+                                holding = HoldingModel(
+                                    account_id=account_id,
+                                    symbol=symbol,
+                                    quantity=qty_val,
+                                    average_buy_price=avg_buy,
+                                )
+                                session.add(holding)
+                            else:
+                                holding.quantity = qty_val
+                                holding.average_buy_price = avg_buy
+
+                    elif event.event_type == DomainEventType.MARGIN_UTILIZATION_CHANGED:
+                        p = event.payload
+                        acc_id = event.account_id or "DEFAULT"
+                        stmt = select(AccountModel).where(AccountModel.account_id == acc_id)
+                        res = await session.execute(stmt)
+                        acc = res.scalar_one_or_none()
+                        cash_val = Decimal(str(p.get("cash_balance", "0.00")))
+                        block_val = Decimal(str(p.get("blocked_margin", "0.00")))
+                        if not acc:
+                            acc = AccountModel(
+                                account_id=acc_id,
+                                cash_balance=cash_val,
+                                blocked_margin=block_val,
+                            )
+                            session.add(acc)
+                        else:
+                            acc.cash_balance = cash_val
+                            acc.blocked_margin = block_val
+
+                    elif event.event_type == DomainEventType.DOUBLE_ENTRY_TXN_RECORDED:
+                        p = event.payload
+                        txn_id = p.get("transaction_id")
+                        if txn_id:
+                            stmt = select(DoubleEntryTransactionModel).where(
+                                DoubleEntryTransactionModel.transaction_id == txn_id
+                            )
+                            res = await session.execute(stmt)
+                            if not res.scalar_one_or_none():
+                                db_txn = DoubleEntryTransactionModel(
+                                    transaction_id=txn_id,
+                                    reference_id=p.get("reference_id", ""),
+                                    reference_type=p.get("reference_type", "GENERAL"),
+                                    description=p.get("description", ""),
+                                )
+                                session.add(db_txn)
+                                for leg in p.get("legs", []):
+                                    db_leg = DoubleEntryLegModel(
+                                        transaction_id=txn_id,
+                                        account_category=leg.get("account_category", "USER_CASH"),
+                                        account_id=leg.get("account_id", "DEFAULT"),
+                                        debit=Decimal(str(leg.get("debit", "0.00"))),
+                                        credit=Decimal(str(leg.get("credit", "0.00"))),
+                                    )
+                                    session.add(db_leg)
         except Exception as e:
-            # Non-critical: failure in background persistence must not crash trading engine
-            logger.debug(f"Async persistence notice: {e}")
+            logger.warning(f"Async persistence notice: {e}")

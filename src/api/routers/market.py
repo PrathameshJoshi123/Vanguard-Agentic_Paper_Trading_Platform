@@ -3,7 +3,10 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
+from datetime import datetime, timezone
+
 from src.market_data.gateway import MarketDataGateway
+from src.market_data.models import MarketDepth, DepthLevel
 from src.api.dependencies import get_market_gateway
 from src.api.schemas.market import CandleBarSchema, CandleHistoryResponse
 
@@ -122,6 +125,135 @@ async def toggle_feed_mode(
         "status": "SUCCESS",
         "feed_mode": "REPLAY" if is_replay else "LIVE",
         "message": f"Market feed successfully switched to {'OFFLINE REPLAY' if is_replay else 'LIVE NSE FEED'}.",
+    }
+
+
+class FeedAnomalyRequest(BaseModel):
+    symbol: str = Field(default="RELIANCE", description="Symbol to simulate anomaly for")
+    anomaly_type: str = Field(
+        default="DUPLICATE",
+        description="Type of feed anomaly: 'DUPLICATE', 'OUT_OF_ORDER', 'SEQUENCE_GAP', 'BURST'",
+    )
+    count: int = Field(default=5, description="Number of anomaly ticks to generate (e.g. for BURST)")
+
+
+@router.post("/simulate-feed-anomaly", status_code=status.HTTP_200_OK)
+async def simulate_feed_anomaly(
+    req: FeedAnomalyRequest,
+    gateway: MarketDataGateway = Depends(get_market_gateway),
+):
+    """
+    Stress & Misbehavior Testing Endpoint (Problem Statement Compliance):
+    Simulates deliberate market feed defects as specified in 021 Sandbox:
+      1. DUPLICATE: Repeated identical (seq, timestamp) packets.
+      2. OUT_OF_ORDER: Packets with inverted timestamps or backwards sequence numbers.
+      3. SEQUENCE_GAP: Skipped sequence numbers (e.g. seq + 15).
+      4. BURST: High-throughput microburst of 50+ ticks within milliseconds.
+    """
+    sym = req.symbol.upper()
+    current_depth = gateway.get_latest_depth(sym)
+    base_price = current_depth.ltp if current_depth.ltp > 0 else Decimal("2500.00")
+    now = datetime.now(timezone.utc)
+
+    anom = req.anomaly_type.upper()
+    injected_count = 0
+
+    if anom == "DUPLICATE":
+        dup_tick = MarketDepth(
+            symbol=sym,
+            ltp=base_price,
+            bids=current_depth.bids,
+            asks=current_depth.asks,
+            total_buy_quantity=current_depth.total_buy_quantity,
+            total_sell_quantity=current_depth.total_sell_quantity,
+            volume=current_depth.volume,
+            timestamp=now,
+            sequence_id=getattr(current_depth, "sequence_id", 100) + 1,
+        )
+        await gateway.ingest_tick(dup_tick)
+        injected_count += 1
+        for _ in range(req.count if req.count > 0 else 1):
+            await gateway.ingest_tick(dup_tick)
+            injected_count += 1
+
+    elif anom == "OUT_OF_ORDER":
+        cur_tick = MarketDepth(
+            symbol=sym,
+            ltp=base_price,
+            bids=current_depth.bids,
+            asks=current_depth.asks,
+            total_buy_quantity=current_depth.total_buy_quantity,
+            total_sell_quantity=current_depth.total_sell_quantity,
+            volume=current_depth.volume,
+            timestamp=now,
+            sequence_id=500,
+        )
+        await gateway.ingest_tick(cur_tick)
+        injected_count += 1
+
+        for i in range(1, req.count + 1):
+            stale_tick = MarketDepth(
+                symbol=sym,
+                ltp=base_price - Decimal(str(i)),
+                bids=current_depth.bids,
+                asks=current_depth.asks,
+                total_buy_quantity=current_depth.total_buy_quantity,
+                total_sell_quantity=current_depth.total_sell_quantity,
+                volume=current_depth.volume,
+                timestamp=datetime.fromtimestamp(now.timestamp() - (i * 10), timezone.utc),
+                sequence_id=500 - i,
+            )
+            await gateway.ingest_tick(stale_tick)
+            injected_count += 1
+
+    elif anom == "SEQUENCE_GAP":
+        last_seq = gateway.sequence_manager._last_sequence.get(sym, 100)
+        gap_tick = MarketDepth(
+            symbol=sym,
+            ltp=base_price,
+            bids=current_depth.bids,
+            asks=current_depth.asks,
+            total_buy_quantity=current_depth.total_buy_quantity,
+            total_sell_quantity=current_depth.total_sell_quantity,
+            volume=current_depth.volume,
+            timestamp=now,
+            sequence_id=last_seq + 15,
+        )
+        await gateway.ingest_tick(gap_tick)
+        injected_count += 1
+
+    elif anom == "BURST":
+        last_seq = gateway.sequence_manager._last_sequence.get(sym, 200)
+        burst_count = max(req.count, 50)
+        for i in range(burst_count):
+            tick = MarketDepth(
+                symbol=sym,
+                ltp=base_price + Decimal(str(i * 0.05)),
+                bids=current_depth.bids,
+                asks=current_depth.asks,
+                total_buy_quantity=current_depth.total_buy_quantity,
+                total_sell_quantity=current_depth.total_sell_quantity,
+                volume=current_depth.volume + (i * 10),
+                timestamp=now,
+                sequence_id=last_seq + i + 1,
+            )
+            await gateway.ingest_tick(tick)
+            injected_count += 1
+
+    health = gateway.get_feed_health(sym)
+    return {
+        "status": "ANOMALY_SIMULATED",
+        "anomaly_type": anom,
+        "symbol": sym,
+        "ticks_injected": injected_count,
+        "feed_health": {
+            "symbol": health.symbol,
+            "status": str(health.status),
+            "ticks_received": health.total_ticks_processed,
+            "duplicates_dropped": health.duplicate_ticks_dropped,
+            "out_of_order_dropped": health.out_of_order_ticks_dropped,
+            "sequence_gaps_detected": health.sequence_gaps_detected,
+        },
     }
 
 

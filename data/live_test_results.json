@@ -32,10 +32,10 @@
   },
   "crash_recovery": {
     "status": "PASSED",
-    "recovery_time_ms": 676.9,
+    "recovery_time_ms": 1785.96,
     "discrepancy_rupees": "0.00",
-    "reconstructed_orders": 1,
-    "reconstructed_trades": 0,
+    "reconstructed_orders": 2,
+    "reconstructed_trades": 7,
     "state_integrity": "100% DETERMINISTIC"
   },
   "load_testing": {
@@ -46,53 +46,53 @@
     "failed_requests": 0,
     "success_rate_pct": 100.0,
     "total_time_seconds": 0.97,
-    "throughput_rps": 205.18
+    "throughput_rps": 205.69
   },
   "latency_benchmarks": {
     "order_placement": {
-      "min": 2.466,
-      "avg": 3.298,
-      "p50": 2.953,
-      "p90": 4.365,
-      "p95": 5.194,
-      "p99": 7.647,
-      "max": 7.647
+      "min": 2.404,
+      "avg": 3.072,
+      "p50": 3.004,
+      "p90": 3.769,
+      "p95": 4.651,
+      "p99": 4.765,
+      "max": 4.765
     },
     "order_query": {
-      "min": 3.364,
-      "avg": 7.27,
-      "p50": 7.183,
-      "p90": 10.712,
-      "p95": 12.208,
-      "p99": 12.602,
-      "max": 12.602
+      "min": 3.588,
+      "avg": 7.251,
+      "p50": 7.359,
+      "p90": 10.045,
+      "p95": 10.526,
+      "p99": 13.097,
+      "max": 13.097
     },
     "order_cancellation": {
-      "min": 2.282,
-      "avg": 2.946,
-      "p50": 2.796,
-      "p90": 3.797,
-      "p95": 3.871,
-      "p99": 5.241,
-      "max": 5.241
+      "min": 2.287,
+      "avg": 2.856,
+      "p50": 2.776,
+      "p90": 3.549,
+      "p95": 3.859,
+      "p99": 4.306,
+      "max": 4.306
     },
     "market_depth_query": {
-      "min": 3.302,
-      "avg": 7.26,
-      "p50": 6.837,
-      "p90": 10.957,
-      "p95": 12.506,
-      "p99": 14.494,
-      "max": 14.494
+      "min": 3.256,
+      "avg": 6.794,
+      "p50": 6.691,
+      "p90": 9.165,
+      "p95": 9.557,
+      "p99": 14.792,
+      "max": 14.792
     },
     "audit_reconcile": {
-      "min": 3.486,
-      "avg": 7.22,
-      "p50": 7.01,
-      "p90": 10.589,
-      "p95": 12.075,
-      "p99": 13.648,
-      "max": 13.648
+      "min": 3.416,
+      "avg": 6.897,
+      "p50": 6.811,
+      "p90": 9.594,
+      "p95": 10.06,
+      "p99": 10.832,
+      "max": 10.832
     }
   }
 }

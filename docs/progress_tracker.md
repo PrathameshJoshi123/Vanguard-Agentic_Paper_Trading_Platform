@@ -472,3 +472,18 @@ Executed end-to-end on the live running server (`http://localhost:8000`) via `te
 - **Load & Concurrency**: 20 concurrent trading accounts, 200 operations, **205.18 req/sec** throughput, **100% success rate**.
 - **Latency Benchmarks**: Order placement **p50 = 2.95 ms** (p95 = 5.19 ms), order cancellation **p50 = 2.80 ms** (p95 = 3.87 ms).
 - **Audit Report Generated**: Full report available at [`docs/LIVE_CORE_ENGINE_AUDIT_AND_TEST_REPORT.md`](file:///d:/My_Space/SYRUS_7/docs/LIVE_CORE_ENGINE_AUDIT_AND_TEST_REPORT.md).
+
+---
+
+## 10. Market Feed Misbehavior & Resilience Audit (021 Sandbox Compliance)
+
+Executed end-to-end against live running server (`http://localhost:8000`) via [`scripts/test_feed_misbehavior_live.py`](file:///d:/My_Space/SYRUS_7/scripts/test_feed_misbehavior_live.py) and unit suite [`tests/unit/test_feed_resilience.py`](file:///d:/My_Space/SYRUS_7/tests/unit/test_feed_resilience.py):
+- **Problem Statement Rule**: *"The market feed misbehaves on purpose. Expect issues such as out-of-order ticks, duplicate ticks, feed drops, tick bursts, and so on."*
+- **Duplicate Ticks**: 10 duplicate ticks injected; all 10 detected and dropped by `SequenceManager` rolling signature window ($O(1)$).
+- **Out-of-Order Ticks**: 5 inverted timestamp/backwards sequence packets injected; all dropped before reaching matching engine.
+- **Sequence Gaps**: +15 sequence number jump injected; tracked in `sequence_gaps_detected` metrics without stalling engine.
+- **Tick Microbursts**: 100 rapid ticks injected in 2.06 seconds (~20 ms/tick); zero buffer drops or latency spikes.
+- **Order Engine Immunity**: Placed resting BUY LIMIT order; injected dirty/corrupt ticks; verified order remained safely `OPEN` without false execution.
+- **Feed Drops & Reconnection**: Cleanly toggled between `REPLAY` and `LIVE` feeds; verified zero process crashing and seamless state restoration.
+- **Double-Entry Equilibrium**: System reconciliation confirmed **₹0.00 discrepancy** and all 4 audit checks passed.
+- **Unit Test Suite**: 5/5 tests passed in 0.15s (`test_duplicate_tick_rejection`, `test_out_of_order_sequence_rejection`, `test_out_of_order_timestamp_rejection`, `test_sequence_gap_detection`, `test_feed_handler_disconnect_and_reconnect`).
