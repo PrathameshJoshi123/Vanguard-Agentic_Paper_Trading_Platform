@@ -5,8 +5,8 @@ import { ChatMessage as ChatMessageType, OrderProposalPayload } from "@/lib/type
 import { WebCitationsList } from "./WebCitationsList";
 import { PolicyApprovalCard } from "./PolicyApprovalCard";
 import { PolicyRejectionCard } from "./PolicyRejectionCard";
+import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
 import { Bot, User, Sparkles, TrendingUp, Briefcase, Compass } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -25,31 +25,43 @@ export function ChatMessage({
     switch (routed) {
       case "research":
         return (
-          <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-200 flex items-center gap-1">
+          <span
+            style={CONTROL_SHADOW_STYLE}
+            className="text-[10px] font-mono bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-full px-2 py-0.5 flex items-center gap-1"
+          >
             <Compass className="w-2.5 h-2.5" />
             <span>Research Specialist</span>
-          </Badge>
+          </span>
         );
       case "portfolio":
         return (
-          <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1">
+          <span
+            style={CONTROL_SHADOW_STYLE}
+            className="text-[10px] font-mono bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-full px-2 py-0.5 flex items-center gap-1"
+          >
             <Briefcase className="w-2.5 h-2.5" />
             <span>Portfolio Specialist</span>
-          </Badge>
+          </span>
         );
       case "proposer":
         return (
-          <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1">
+          <span
+            style={CONTROL_SHADOW_STYLE}
+            className="text-[10px] font-mono bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-full px-2 py-0.5 flex items-center gap-1"
+          >
             <TrendingUp className="w-2.5 h-2.5" />
             <span>Trade Proposer Agent</span>
-          </Badge>
+          </span>
         );
       default:
         return (
-          <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-600 border-slate-200 flex items-center gap-1">
+          <span
+            style={CONTROL_SHADOW_STYLE}
+            className="text-[10px] font-mono bg-slate-50 dark:bg-white/10 text-slate-600 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10 rounded-full px-2 py-0.5 flex items-center gap-1"
+          >
             <Sparkles className="w-2.5 h-2.5" />
             <span>AI Copilot</span>
-          </Badge>
+          </span>
         );
     }
   };
@@ -68,17 +80,18 @@ export function ChatMessage({
         {/* Meta Header */}
         <div className="flex items-center gap-2 mb-1 px-1">
           {!isUser && getRoutingBadge(message.agent_routed)}
-          <span className="text-[10px] text-slate-400 font-mono">
+          <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
             {message.timestamp}
           </span>
         </div>
 
         {/* Bubble */}
         <div
+          style={isUser ? undefined : CONTROL_SHADOW_STYLE}
           className={`rounded-2xl px-4 py-3 text-xs leading-relaxed ${
             isUser
-              ? "bg-indigo-600 text-white rounded-tr-xs shadow-xs"
-              : "bg-white border border-slate-200 text-slate-800 rounded-tl-xs shadow-xs"
+              ? "bg-slate-900 dark:bg-white text-white dark:text-black rounded-tr-xs shadow-xs"
+              : "bg-white dark:bg-[#18181b] border border-slate-200/80 dark:border-white/10 text-slate-800 dark:text-zinc-200 rounded-tl-xs shadow-xs"
           }`}
         >
           {/* Main Text content */}
@@ -125,7 +138,7 @@ export function ChatMessage({
 
       {/* User Avatar */}
       {isUser && (
-        <div className="w-7 h-7 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+        <div className="w-7 h-7 rounded-lg bg-slate-800 dark:bg-zinc-700 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
           <User className="w-4 h-4" />
         </div>
       )}
