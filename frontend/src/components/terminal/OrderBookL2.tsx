@@ -2,8 +2,7 @@
 
 import React from "react";
 import { useTradingStore } from "@/store/useTradingStore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
 import { Layers, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface OrderBookL2Props {
@@ -14,7 +13,7 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
   const selectedSymbol = useTradingStore((s) => s.selectedSymbol);
   const marketDepth = useTradingStore((s) => s.marketDepth[selectedSymbol]);
 
-  // Fallback default levels if stream is initializing
+  // 5-depth levels
   const bids = marketDepth?.bids?.length
     ? marketDepth.bids.slice(0, 5)
     : [
@@ -50,41 +49,47 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
       : 50;
 
   return (
-    <Card className="bg-white border-slate-200 shadow-xs">
-      <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+    <div className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#18181b] p-4 shadow-xs">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-emerald-600" />
-          <CardTitle className="text-sm font-semibold tracking-tight text-slate-800">
+          <Layers className="w-4 h-4 text-emerald-500" />
+          <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200">
             Market Depth (5-Depth Level 2)
-          </CardTitle>
+          </h3>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 font-mono text-xs">
-            <span className="text-slate-400 font-sans text-[11px]">Spread:</span>
-            <span className="font-semibold text-slate-700">₹{spread.toFixed(2)}</span>
+            <span className="text-slate-400 dark:text-zinc-500 font-sans text-[11px]">Spread:</span>
+            <span
+              style={CONTROL_SHADOW_STYLE}
+              className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-slate-50 dark:bg-[#1e1e22] text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10"
+            >
+              ₹{spread.toFixed(2)}
+            </span>
           </div>
-          <Badge
-            variant="outline"
-            className="text-[11px] font-mono font-bold bg-slate-50 border-slate-200 text-slate-900 px-2 py-0.5"
+          <span
+            style={CONTROL_SHADOW_STYLE}
+            className="rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold bg-slate-900 dark:bg-white text-white dark:text-black"
           >
             LTP: ₹{ltp.toFixed(2)}
-          </Badge>
+          </span>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-4 space-y-3">
-        {/* Buy/Sell Ratio Progress Bar */}
+      <div className="space-y-3">
+        {/* Buy/Sell Ratio Bar */}
         <div className="space-y-1">
-          <div className="flex justify-between text-[11px] font-mono text-slate-500">
-            <span className="text-emerald-700 font-semibold flex items-center gap-1">
+          <div className="flex justify-between text-[11px] font-mono">
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
               <ArrowUpRight className="w-3 h-3" /> Buyers: {buyRatio}% ({totalBuyQty.toLocaleString()})
             </span>
-            <span className="text-rose-700 font-semibold flex items-center gap-1">
+            <span className="text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
               Sellers: {100 - buyRatio}% ({totalSellQty.toLocaleString()}) <ArrowDownRight className="w-3 h-3" />
             </span>
           </div>
-          <div className="h-1.5 w-full bg-rose-100 rounded-full overflow-hidden flex">
+          <div className="h-1.5 w-full bg-rose-500/20 rounded-full overflow-hidden flex">
             <div
               className="bg-emerald-500 h-full transition-all duration-300"
               style={{ width: `${buyRatio}%` }}
@@ -92,15 +97,15 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
           </div>
         </div>
 
-        {/* 2-Column Grid: Bids (Left) & Asks (Right) */}
+        {/* 2-Column Depth Matrix */}
         <div className="grid grid-cols-2 gap-3 text-xs font-mono">
           {/* Bids Column */}
-          <div className="border border-emerald-100 rounded-lg overflow-hidden bg-white">
-            <div className="bg-emerald-50/70 px-3 py-1.5 border-b border-emerald-100 flex justify-between text-[11px] font-sans font-bold text-emerald-900 uppercase tracking-wider">
+          <div className="border border-emerald-500/20 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-[#141417]">
+            <div className="bg-emerald-500/10 px-3 py-1.5 border-b border-emerald-500/20 flex justify-between text-[11px] font-sans font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
               <span>Bids (Price)</span>
               <span>Qty (Orders)</span>
             </div>
-            <div className="divide-y divide-emerald-50">
+            <div className="divide-y divide-emerald-500/10">
               {bids.map((b, idx) => {
                 const depthPct = Math.round((b.quantity / maxQty) * 100);
                 return (
@@ -108,20 +113,22 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
                     key={`bid-${idx}`}
                     type="button"
                     onClick={() => onSelectPrice?.(b.price)}
-                    className="w-full text-left relative flex justify-between items-center px-3 py-1.5 hover:bg-emerald-50 transition-colors group cursor-pointer"
+                    className="w-full text-left relative flex justify-between items-center px-3 py-2 hover:bg-emerald-500/10 transition-colors group cursor-pointer"
                     title={`Click to fill price ₹${b.price.toFixed(2)} in order ticket`}
                   >
                     {/* Depth Fill Bar */}
                     <div
-                      className="absolute right-0 top-0 bottom-0 bg-emerald-500/10 pointer-events-none transition-all duration-200"
+                      className="absolute right-0 top-0 bottom-0 bg-emerald-500/15 pointer-events-none transition-all duration-200"
                       style={{ width: `${depthPct}%` }}
                     />
-                    <span className="relative font-bold text-emerald-700 group-hover:underline">
+                    <span className="relative font-bold text-emerald-600 dark:text-emerald-400 group-hover:underline">
                       ₹{b.price.toFixed(2)}
                     </span>
-                    <span className="relative text-slate-600 text-[11px]">
+                    <span className="relative text-slate-700 dark:text-zinc-300 text-[11px]">
                       {b.quantity.toLocaleString()}{" "}
-                      <span className="text-slate-400 text-[10px]">({b.orders ?? 1})</span>
+                      <span className="text-slate-400 dark:text-zinc-500 text-[10px]">
+                        ({b.orders ?? 1})
+                      </span>
                     </span>
                   </button>
                 );
@@ -130,12 +137,12 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
           </div>
 
           {/* Asks Column */}
-          <div className="border border-rose-100 rounded-lg overflow-hidden bg-white">
-            <div className="bg-rose-50/70 px-3 py-1.5 border-b border-rose-100 flex justify-between text-[11px] font-sans font-bold text-rose-900 uppercase tracking-wider">
+          <div className="border border-rose-500/20 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-[#141417]">
+            <div className="bg-rose-500/10 px-3 py-1.5 border-b border-rose-500/20 flex justify-between text-[11px] font-sans font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
               <span>Asks (Price)</span>
               <span>Qty (Orders)</span>
             </div>
-            <div className="divide-y divide-rose-50">
+            <div className="divide-y divide-rose-500/10">
               {asks.map((a, idx) => {
                 const depthPct = Math.round((a.quantity / maxQty) * 100);
                 return (
@@ -143,20 +150,22 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
                     key={`ask-${idx}`}
                     type="button"
                     onClick={() => onSelectPrice?.(a.price)}
-                    className="w-full text-left relative flex justify-between items-center px-3 py-1.5 hover:bg-rose-50 transition-colors group cursor-pointer"
+                    className="w-full text-left relative flex justify-between items-center px-3 py-2 hover:bg-rose-500/10 transition-colors group cursor-pointer"
                     title={`Click to fill price ₹${a.price.toFixed(2)} in order ticket`}
                   >
                     {/* Depth Fill Bar */}
                     <div
-                      className="absolute left-0 top-0 bottom-0 bg-rose-500/10 pointer-events-none transition-all duration-200"
+                      className="absolute left-0 top-0 bottom-0 bg-rose-500/15 pointer-events-none transition-all duration-200"
                       style={{ width: `${depthPct}%` }}
                     />
-                    <span className="relative font-bold text-rose-700 group-hover:underline">
+                    <span className="relative font-bold text-rose-600 dark:text-rose-400 group-hover:underline">
                       ₹{a.price.toFixed(2)}
                     </span>
-                    <span className="relative text-slate-600 text-[11px]">
+                    <span className="relative text-slate-700 dark:text-zinc-300 text-[11px]">
                       {a.quantity.toLocaleString()}{" "}
-                      <span className="text-slate-400 text-[10px]">({a.orders ?? 1})</span>
+                      <span className="text-slate-400 dark:text-zinc-500 text-[10px]">
+                        ({a.orders ?? 1})
+                      </span>
                     </span>
                   </button>
                 );
@@ -165,10 +174,10 @@ export function OrderBookL2({ onSelectPrice }: OrderBookL2Props) {
           </div>
         </div>
 
-        <div className="text-[10px] text-slate-400 text-center font-sans">
-          Click any depth level to pre-fill the order price in the ticket.
+        <div className="text-[10px] text-slate-400 dark:text-zinc-500 text-center font-sans">
+          Click any depth level to pre-fill the order price in the execution ticket.
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

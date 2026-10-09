@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTradingStore } from "@/store/useTradingStore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { TAccountsCard } from "@/components/ledger/TAccountsCard";
+import { TAccountsRecharts } from "@/components/ledger/TAccountsRecharts";
 import { ContractNoteCard } from "@/components/ledger/ContractNoteCard";
 import { CashJournalTable } from "@/components/ledger/CashJournalTable";
+import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
 import {
   BookOpenCheck,
   CheckCircle2,
   RefreshCw,
   FileSpreadsheet,
-  ShieldCheck,
 } from "lucide-react";
 
 export default function LedgerPage() {
@@ -53,67 +51,67 @@ export default function LedgerPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center">
-            <BookOpenCheck className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-black flex items-center justify-center shrink-0 shadow-xs">
+            <BookOpenCheck className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Regulatory Accounting &amp; Ledger Audit
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
               Balanced Double-Entry T-Accounts, contract notes, and immutable customer cash journal
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs flex items-center gap-1.5 py-1 px-2.5"
+          <span
+            style={CONTROL_SHADOW_STYLE}
+            className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-mono text-xs flex items-center gap-1.5 py-1 px-3 rounded-full font-medium"
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>₹0.00 Discrepancy Verified</span>
-          </Badge>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+          </span>
+          <button
+            type="button"
             onClick={refreshLedger}
             disabled={isLoading}
+            style={CONTROL_SHADOW_STYLE}
+            className="h-8 px-3 text-xs font-medium bg-white dark:bg-[#1c1c1f] text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-transparent hover:bg-slate-50 dark:hover:bg-[#232327] rounded-full transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw
-              className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`}
-            />
-            Audit Ledger
-          </Button>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            <span>Audit Ledger</span>
+          </button>
         </div>
       </div>
 
-      {/* Double-Entry T-Accounts Financial Ledger Grid (Option B) */}
+      {/* Recharts Analytics: Double-Entry Debits vs Credits Bar Chart & Statutory Breakdown */}
+      <TAccountsRecharts tAccounts={tAccounts} contractNotes={contractNotes} />
+
+      {/* Double-Entry T-Accounts Financial Ledger Grid */}
       <TAccountsCard tAccounts={tAccounts} />
 
       {/* Contract Notes Statutory Tax Summary */}
       <ContractNoteCard summary={contractNotes} />
 
       {/* Customer Cash Journal Table */}
-      <Card className="bg-white border-slate-200 shadow-2xs">
-        <CardHeader className="py-3 px-5 border-b border-slate-100 flex flex-row items-center justify-between">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-slate-700" />
-            <CardTitle className="text-sm font-semibold text-slate-900">
+            <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
               Customer Cash Journal (Append-Only Entry Log)
-            </CardTitle>
+            </h3>
           </div>
-          <div className="text-xs font-mono text-slate-500">
+          <span className="text-xs font-mono text-slate-400 dark:text-zinc-500">
             Total Entries: {cashEntries.length}
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <CashJournalTable entries={cashEntries} />
-        </CardContent>
-      </Card>
+          </span>
+        </div>
+
+        <CashJournalTable entries={cashEntries} />
+      </div>
     </div>
   );
 }

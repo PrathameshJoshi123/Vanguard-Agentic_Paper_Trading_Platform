@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTradingStore } from "@/store/useTradingStore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { PositionsTable } from "@/components/portfolio/PositionsTable";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
 import { MISSquareOffBanner } from "@/components/portfolio/MISSquareOffBanner";
+import { PortfolioAllocationChart } from "@/components/portfolio/PortfolioAllocationChart";
+import { MetricCard } from "@/components/ui/northstar/MetricCard";
+import { NorthstarTabs } from "@/components/ui/northstar/NorthstarTabs";
+import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
 import {
   Briefcase,
   Layers,
@@ -27,6 +28,7 @@ export default function PortfolioPage() {
   const setHoldings = useTradingStore((s) => s.setHoldings);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("positions");
 
   const refreshPortfolio = useCallback(async () => {
     setIsLoading(true);
@@ -77,185 +79,116 @@ export default function PortfolioPage() {
   return (
     <div className="space-y-6">
       {/* Page Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center">
-            <Briefcase className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-black flex items-center justify-center shrink-0 shadow-xs">
+            <Briefcase className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Portfolio &amp; Risk Inventory
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
               Real-time VWAP, Mark-to-Market exposure, Demat delivery &amp; MIS settlement
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+          <button
+            type="button"
             onClick={refreshPortfolio}
             disabled={isLoading}
+            style={CONTROL_SHADOW_STYLE}
+            className="h-8 px-3 rounded-full text-xs font-medium bg-white dark:bg-[#1c1c1f] text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-transparent hover:bg-slate-50 dark:hover:bg-[#232327] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw
-              className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`}
-            />
-            Sync State
-          </Button>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            <span>Sync State</span>
+          </button>
         </div>
       </div>
 
       {/* Mandatory 15:20 MIS Square-Off Banner */}
       <MISSquareOffBanner />
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid using Northstar MetricCard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white border-slate-200 shadow-2xs">
-          <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider">
-              Invested Capital (CNC)
-            </CardTitle>
-            <Wallet className="w-3.5 h-3.5 text-slate-400" />
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="text-xl font-bold font-mono text-slate-900">
-              ₹{totalInvested.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">
-              Demat delivery cost basis
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Invested Capital"
+          badge="CNC Cost"
+          value={`₹${totalInvested.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+          hint="Demat delivery cost basis"
+          icon={<Wallet className="w-3.5 h-3.5 text-slate-400" />}
+        />
 
-        <Card className="bg-white border-slate-200 shadow-2xs">
-          <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider">
-              Holdings Value
-            </CardTitle>
-            <Layers className="w-3.5 h-3.5 text-slate-400" />
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="text-xl font-bold font-mono text-slate-900">
-              ₹{currentHoldingsValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">
-              {holdings.length} symbols in Demat
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Holdings Value"
+          badge={`${holdings.length} Assets`}
+          value={`₹${currentHoldingsValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+          hint={`${holdings.length} symbols in Demat delivery`}
+          icon={<Layers className="w-3.5 h-3.5 text-slate-400" />}
+        />
 
-        <Card className="bg-white border-slate-200 shadow-2xs">
-          <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider">
-              Live Unrealized MTM
-            </CardTitle>
-            <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-          </CardHeader>
-          <CardContent className="p-4">
-            <div
-              className={`text-xl font-bold font-mono ${
-                totalUnrealizedMtm > 0
-                  ? "text-emerald-600"
-                  : totalUnrealizedMtm < 0
-                  ? "text-rose-600"
-                  : "text-slate-700"
-              }`}
-            >
-              {totalUnrealizedMtm > 0 ? "+" : ""}
-              ₹{totalUnrealizedMtm.toFixed(2)}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">
-              Mark-to-market against tick feed
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Live Unrealized MTM"
+          badge="Tick Feed"
+          badgeColor={
+            totalUnrealizedMtm >= 0
+              ? "text-emerald-700 dark:text-emerald-300"
+              : "text-rose-700 dark:text-rose-300"
+          }
+          value={`${totalUnrealizedMtm > 0 ? "+" : ""}₹${totalUnrealizedMtm.toFixed(2)}`}
+          trend={{
+            value: totalUnrealizedMtm >= 0 ? "+MTM" : "-MTM",
+            isPositive: totalUnrealizedMtm >= 0,
+            isNegative: totalUnrealizedMtm < 0,
+          }}
+          hint="Continuous tick-to-tick revaluation"
+          icon={<TrendingUp className="w-3.5 h-3.5 text-slate-400" />}
+        />
 
-        <Card className="bg-white border-slate-200 shadow-2xs">
-          <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider">
-              Realized P&amp;L
-            </CardTitle>
-            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-          </CardHeader>
-          <CardContent className="p-4">
-            <div
-              className={`text-xl font-bold font-mono ${
-                totalRealizedPnl > 0
-                  ? "text-emerald-600"
-                  : totalRealizedPnl < 0
-                  ? "text-rose-600"
-                  : "text-slate-700"
-              }`}
-            >
-              {totalRealizedPnl > 0 ? "+" : ""}
-              ₹{totalRealizedPnl.toFixed(2)}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">
-              Settled into customer cash ledger
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Realized P&L"
+          badge="Cash Ledger"
+          value={`${totalRealizedPnl > 0 ? "+" : ""}₹${totalRealizedPnl.toFixed(2)}`}
+          trend={{
+            value: totalRealizedPnl >= 0 ? "+Realized" : "-Realized",
+            isPositive: totalRealizedPnl >= 0,
+            isNegative: totalRealizedPnl < 0,
+          }}
+          hint="Settled into customer cash journal"
+          icon={<ShieldCheck className="w-3.5 h-3.5 text-slate-400" />}
+        />
       </div>
 
+      {/* Recharts Analytics: Asset Allocation & P&L breakdown */}
+      <PortfolioAllocationChart holdings={holdings} positions={positions} />
+
       {/* Main Content Tabs: Positions & Holdings */}
-      <Tabs defaultValue="positions" className="space-y-4">
-        <TabsList className="bg-slate-100 p-1 border border-slate-200">
-          <TabsTrigger
-            value="positions"
-            className="text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs"
-          >
-            Open Positions ({positions.filter((p) => p.quantity !== 0).length})
-          </TabsTrigger>
-          <TabsTrigger
-            value="holdings"
-            className="text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs"
-          >
-            Delivery Holdings ({holdings.length})
-          </TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        <NorthstarTabs
+          tabs={[
+            {
+              id: "positions",
+              label: "Open Positions",
+              count: positions.filter((p) => p.quantity !== 0).length,
+            },
+            {
+              id: "holdings",
+              label: "Delivery Holdings",
+              count: holdings.length,
+            },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+        />
 
-        <TabsContent value="positions">
-          <Card className="bg-white border-slate-200 shadow-2xs">
-            <CardHeader className="py-3 px-5 border-b border-slate-100 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold text-slate-900">
-                  Active Positions &amp; Leveraged Risk
-                </CardTitle>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Positions update tick-by-tick with continuous VWAP and MTM
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <PositionsTable
-                positions={positions}
-                onRefresh={refreshPortfolio}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="holdings">
-          <Card className="bg-white border-slate-200 shadow-2xs">
-            <CardHeader className="py-3 px-5 border-b border-slate-100 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold text-slate-900">
-                  Demat Delivery Inventory (CNC)
-                </CardTitle>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Unleveraged delivery assets held for settlement
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <HoldingsTable holdings={holdings} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        {activeTab === "positions" ? (
+          <PositionsTable positions={positions} onRefresh={refreshPortfolio} />
+        ) : (
+          <HoldingsTable holdings={holdings} />
+        )}
+      </div>
     </div>
   );
 }

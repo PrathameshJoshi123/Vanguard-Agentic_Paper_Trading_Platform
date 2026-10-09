@@ -3,14 +3,22 @@
 import React, { useState, useEffect } from "react";
 import { useTradingStore } from "@/store/useTradingStore";
 import { api } from "@/lib/api";
-import { Side, ProductType, OrderType, OrderPlacementResponse } from "@/lib/types";
+import { Side, ProductType, OrderType } from "@/lib/types";
 import { ChargesPreview } from "./ChargesPreview";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Loader2, CheckCircle, AlertTriangle, ShieldCheck } from "lucide-react";
+import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
+import {
+  NorthstarInput,
+  NorthstarPrimaryButton,
+  NorthstarSecondaryButton,
+} from "@/components/ui/northstar/NorthstarModal";
+import {
+  ShoppingBag,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+  Receipt,
+  ChevronDown,
+} from "lucide-react";
 
 interface OrderTicketProps {
   selectedPrice?: number | null;
@@ -35,6 +43,7 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
   const [quantity, setQuantity] = useState<number>(50);
   const [price, setPrice] = useState<string>("2500.00");
   const [triggerPrice, setTriggerPrice] = useState<string>("2495.00");
+  const [showCharges, setShowCharges] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [executionResult, setExecutionResult] = useState<{
@@ -98,24 +107,21 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
 
         const tradesCount = res.trades ? res.trades.length : 0;
         const avgFill = Number(res.order.average_fill_price || numPrice);
-        const fillMsg =
-          res.order.status === "FILLED"
-            ? `Filled ${res.order.filled_qty} shares @ ₹${(isNaN(avgFill) ? numPrice : avgFill).toFixed(2)}.`
-            : `Order ${res.order.status} (${res.order.remaining_qty} resting on book).`;
 
-        const totalCharges = Number(res.total_charges || 0);
         setExecutionResult({
           type: "SUCCESS",
-          message: `${side} Order Executed (${res.order.status})`,
-          details: `${fillMsg} ${tradesCount > 0 ? `(${tradesCount} matching trade legs)` : ""}. Regulatory Charges: ₹${(isNaN(totalCharges) ? 0 : totalCharges).toFixed(2)}.`,
+          message: `${side} ${res.order.filled_qty || quantity} ${selectedSymbol} [${res.order.status}]`,
+          details:
+            res.order.status === "FILLED"
+              ? `Matched ${tradesCount} trade leg(s) @ avg ₹${avgFill.toFixed(2)}`
+              : `Order placed in book with ID ${res.order.order_id.slice(0, 8)}`,
         });
       }
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to place order.";
+    } catch (err: any) {
       setExecutionResult({
         type: "ERROR",
-        message: "Order Rejected",
-        details: errorMsg,
+        message: "Order Rejected by Engine",
+        details: err.message || "Risk verification or margin failure",
       });
     } finally {
       setIsSubmitting(false);
@@ -123,221 +129,242 @@ export function OrderTicket({ selectedPrice, onClearSelectedPrice }: OrderTicket
   };
 
   return (
-    <Card className="bg-white border-slate-200 shadow-xs">
-      <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+    <div className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#18181b] p-5 shadow-xs space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
         <div className="flex items-center gap-2">
-          <ShoppingBag className="w-4 h-4 text-slate-700" />
-          <CardTitle className="text-sm font-semibold tracking-tight text-slate-800">
-            Order Execution Ticket
-          </CardTitle>
+          <ShoppingBag className="w-4 h-4 text-indigo-500" />
+          <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+            Order Placement Ticket
+          </h3>
         </div>
-        <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5 bg-slate-50 border-slate-200">
-          {selectedSymbol} • NSE
-        </Badge>
-      </CardHeader>
+        <span
+          style={CONTROL_SHADOW_STYLE}
+          className="rounded-full px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-50 dark:bg-[#1e1e22] text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10"
+        >
+          {selectedSymbol}
+        </span>
+      </div>
 
-      <CardContent className="p-4 space-y-4">
-        <form onSubmit={handleSubmitOrder} className="space-y-4">
-          {/* Side Selector: BUY (Emerald) vs SELL (Rose) */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
+      <form onSubmit={handleSubmitOrder} className="space-y-4">
+        {/* BUY / SELL Side Segmented Switch */}
+        <div
+          style={CONTROL_SHADOW_STYLE}
+          className="grid grid-cols-2 p-1 rounded-xl bg-slate-100 dark:bg-[#121215] border border-slate-200/80 dark:border-transparent gap-1"
+        >
+          <button
+            type="button"
+            onClick={() => setSide("BUY")}
+            className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+              side === "BUY"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            BUY / LONG
+          </button>
+          <button
+            type="button"
+            onClick={() => setSide("SELL")}
+            className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+              side === "SELL"
+                ? "bg-rose-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            SELL / SHORT
+          </button>
+        </div>
+
+        {/* Product Type (MIS vs CNC) */}
+        <div>
+          <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1.5">
+            Product Mode
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setSide("BUY")}
-              className={`py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                side === "BUY"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+              onClick={() => setProductType("MIS")}
+              style={CONTROL_SHADOW_STYLE}
+              className={`h-8 rounded-xl text-xs font-medium cursor-pointer transition-all border flex items-center justify-center gap-1.5 ${
+                productType === "MIS"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-black border-transparent shadow-xs font-semibold"
+                  : "bg-white dark:bg-[#1c1c1f] text-slate-700 dark:text-zinc-300 border-slate-200/80 dark:border-transparent hover:bg-slate-50 dark:hover:bg-[#232327]"
               }`}
             >
-              BUY
+              <span>MIS (Intraday 5x)</span>
             </button>
             <button
               type="button"
-              onClick={() => setSide("SELL")}
-              className={`py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                side === "SELL"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+              onClick={() => setProductType("CNC")}
+              style={CONTROL_SHADOW_STYLE}
+              className={`h-8 rounded-xl text-xs font-medium cursor-pointer transition-all border flex items-center justify-center gap-1.5 ${
+                productType === "CNC"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-black border-transparent shadow-xs font-semibold"
+                  : "bg-white dark:bg-[#1c1c1f] text-slate-700 dark:text-zinc-300 border-slate-200/80 dark:border-transparent hover:bg-slate-50 dark:hover:bg-[#232327]"
               }`}
             >
-              SELL
+              <span>CNC (Delivery 100%)</span>
             </button>
           </div>
+        </div>
 
-          {/* Product Type Toggle: CNC (Delivery) vs MIS (Intraday) */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">Product Type</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setProductType("CNC")}
-                className={`p-2 border rounded-lg text-left transition-all cursor-pointer ${
-                  productType === "CNC"
-                    ? "border-blue-600 bg-blue-50/50 text-blue-950 font-bold"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                }`}
-              >
-                <div className="text-xs font-semibold">CNC (Delivery)</div>
-                <div className="text-[10px] text-slate-500 font-sans font-normal">100% Cash Margin</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setProductType("MIS")}
-                className={`p-2 border rounded-lg text-left transition-all cursor-pointer ${
-                  productType === "MIS"
-                    ? "border-blue-600 bg-blue-50/50 text-blue-950 font-bold"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                }`}
-              >
-                <div className="text-xs font-semibold">MIS (Intraday)</div>
-                <div className="text-[10px] text-slate-500 font-sans font-normal">20% Margin (5x Lev.)</div>
-              </button>
-            </div>
+        {/* Order Type Tabs */}
+        <div>
+          <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1.5">
+            Execution Type
           </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {(["LIMIT", "MARKET", "SL", "SL_M"] as OrderType[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setOrderType(t)}
+                style={CONTROL_SHADOW_STYLE}
+                className={`h-7 rounded-lg text-[11px] font-medium cursor-pointer transition-all border ${
+                  orderType === t
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
+                    : "bg-white dark:bg-[#1c1c1f] text-slate-600 dark:text-zinc-400 border-slate-200/80 dark:border-transparent hover:bg-slate-50 dark:hover:bg-[#232327]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Order Type Tabs: MARKET | LIMIT | SL | SL_M */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">Order Type</Label>
-            <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-100 rounded-lg text-[11px] font-mono">
-              {(["MARKET", "LIMIT", "SL", "SL_M"] as OrderType[]).map((ot) => (
+        {/* Quantity Field */}
+        <div>
+          <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1">
+            <span>Quantity (Shares)</span>
+            <div className="flex items-center gap-1">
+              {[10, 25, 50, 100].map((q) => (
                 <button
-                  key={ot}
+                  key={q}
                   type="button"
-                  onClick={() => setOrderType(ot)}
-                  className={`py-1 rounded text-center transition-all cursor-pointer ${
-                    orderType === ot
-                      ? "bg-white text-slate-900 font-bold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
+                  onClick={() => handleQuickQty(q)}
+                  className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
                 >
-                  {ot}
+                  +{q}
                 </button>
               ))}
             </div>
           </div>
+          <NorthstarInput
+            type="number"
+            min={1}
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
+            placeholder="Qty"
+          />
+        </div>
 
-          {/* Quantity Input + Quick Lot Helpers */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center">
-              <Label className="text-xs font-semibold text-slate-700">Quantity (Shares)</Label>
-              <div className="flex gap-1">
-                {[25, 50, 100].map((lot) => (
-                  <button
-                    key={lot}
-                    type="button"
-                    onClick={() => handleQuickQty(lot)}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 font-mono transition-colors cursor-pointer"
-                  >
-                    +{lot}
-                  </button>
-                ))}
-              </div>
+        {/* Price Field */}
+        {orderType !== "MARKET" && orderType !== "SL_M" && (
+          <div>
+            <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1">
+              Limit Price (₹)
             </div>
-            <Input
-              type="number"
-              min={1}
-              step={1}
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
-              className="font-mono text-sm h-9 bg-white border-slate-200"
-            />
-          </div>
-
-          {/* Limit Price Input */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center">
-              <Label className="text-xs font-semibold text-slate-700">Limit Price (₹)</Label>
-              <button
-                type="button"
-                onClick={() => setPrice(ltp.toFixed(2))}
-                className="text-[10px] text-blue-600 hover:underline font-sans cursor-pointer"
-              >
-                Use LTP (₹{ltp.toFixed(2)})
-              </button>
-            </div>
-            <Input
+            <NorthstarInput
               type="number"
               step="0.05"
-              disabled={orderType === "MARKET" || orderType === "SL_M"}
-              value={orderType === "MARKET" || orderType === "SL_M" ? ltp.toFixed(2) : price}
+              value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="font-mono text-sm h-9 bg-white border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
+              placeholder={`₹${ltp.toFixed(2)}`}
             />
           </div>
+        )}
 
-          {/* Trigger Price (Visible only for SL / SL_M) */}
-          {(orderType === "SL" || orderType === "SL_M") && (
-            <div className="space-y-1.5 animate-fadeIn">
-              <Label className="text-xs font-semibold text-slate-700">Trigger Price (₹)</Label>
-              <Input
-                type="number"
-                step="0.05"
-                value={triggerPrice}
-                onChange={(e) => setTriggerPrice(e.target.value)}
-                className="font-mono text-sm h-9 bg-white border-slate-200"
-              />
+        {/* Trigger Price Field */}
+        {(orderType === "SL" || orderType === "SL_M") && (
+          <div>
+            <div className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mb-1">
+              Trigger Price (₹)
             </div>
-          )}
+            <NorthstarInput
+              type="number"
+              step="0.05"
+              value={triggerPrice}
+              onChange={(e) => setTriggerPrice(e.target.value)}
+              placeholder="Trigger Price"
+            />
+          </div>
+        )}
 
-          {/* Interactive Pre-Trade Charges & Margin Preview */}
+        {/* Toggle Detailed Charges Breakdown */}
+        <button
+          type="button"
+          onClick={() => setShowCharges(!showCharges)}
+          style={CONTROL_SHADOW_STYLE}
+          className="w-full h-8 px-3 rounded-xl border border-slate-200/80 dark:border-transparent bg-white dark:bg-[#1c1c1f] text-slate-700 dark:text-zinc-300 text-xs font-medium cursor-pointer flex items-center justify-between hover:bg-slate-50 dark:hover:bg-[#232327] transition-all"
+        >
+          <div className="flex items-center gap-1.5">
+            <Receipt className="w-3.5 h-3.5 text-blue-500" />
+            <span>Pre-Trade Margin &amp; Levies</span>
+          </div>
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+              showCharges ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {showCharges && (
           <ChargesPreview
             side={side}
             productType={productType}
-            price={orderType === "MARKET" || orderType === "SL_M" ? ltp : numPrice}
+            price={numPrice}
             quantity={quantity}
             availableCash={availableCash}
           />
+        )}
 
-          {/* Execution Feedback Banner */}
-          {executionResult && (
-            <div
-              className={`p-3 rounded-lg text-xs border flex items-start gap-2 ${
-                executionResult.type === "SUCCESS"
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                  : "bg-rose-50 border-rose-200 text-rose-900"
-              }`}
-            >
-              {executionResult.type === "SUCCESS" ? (
-                <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-              )}
-              <div className="space-y-0.5">
-                <div className="font-semibold">{executionResult.message}</div>
-                {executionResult.details && (
-                  <div className="text-[11px] opacity-90">{executionResult.details}</div>
-                )}
-              </div>
+        {/* Submit Button */}
+        <NorthstarPrimaryButton
+          type="submit"
+          disabled={isSubmitting}
+          className={`w-full h-9 text-xs font-bold ${
+            side === "BUY"
+              ? "!bg-emerald-600 hover:!bg-emerald-700 text-white"
+              : "!bg-rose-600 hover:!bg-rose-700 text-white"
+          }`}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+              Submitting Order...
+            </>
+          ) : (
+            `EXECUTE ${side} ORDER (${quantity} Shares)`
+          )}
+        </NorthstarPrimaryButton>
+      </form>
+
+      {/* Execution Feedback Banner */}
+      {executionResult && (
+        <div
+          style={CONTROL_SHADOW_STYLE}
+          className={`p-3 rounded-xl border text-xs ${
+            executionResult.type === "SUCCESS"
+              ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+              : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+          }`}
+        >
+          <div className="flex items-center gap-1.5 font-bold">
+            {executionResult.type === "SUCCESS" ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            )}
+            <span>{executionResult.message}</span>
+          </div>
+          {executionResult.details && (
+            <div className="text-[11px] mt-1 text-slate-600 dark:text-zinc-400 pl-5 font-mono">
+              {executionResult.details}
             </div>
           )}
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className={`w-full py-2.5 text-xs font-bold tracking-wide uppercase shadow-xs transition-all ${
-              side === "BUY"
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                : "bg-rose-600 hover:bg-rose-700 text-white"
-            }`}
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-1.5">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Executing Order...
-              </span>
-            ) : (
-              `PLACE ${side} ORDER (${selectedSymbol})`
-            )}
-          </Button>
-
-          <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-            Deterministic matching engine • Full double-entry ledger audit
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }

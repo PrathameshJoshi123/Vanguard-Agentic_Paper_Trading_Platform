@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useTradingStore } from "@/store/useTradingStore";
 import { api } from "@/lib/api";
 import {
@@ -9,19 +9,21 @@ import {
   Radio,
   Wifi,
   WifiOff,
-  Flame,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { CONTROL_SHADOW_STYLE } from "@/lib/design-system";
+import { CrmDropdown } from "@/components/ui/northstar/CrmDropdown";
 
-const SYMBOLS = ["RELIANCE", "TCS", "INFY"];
+const SYMBOL_OPTIONS = [
+  { value: "RELIANCE", label: "RELIANCE", dotColor: "bg-blue-500" },
+  { value: "TCS", label: "TCS", dotColor: "bg-purple-500" },
+  { value: "INFY", label: "INFY", dotColor: "bg-emerald-500" },
+];
 
 export function TopHeader() {
   const wsConnected = useTradingStore((s) => s.wsConnected);
   const selectedSymbol = useTradingStore((s) => s.selectedSymbol);
   const setSelectedSymbol = useTradingStore((s) => s.setSelectedSymbol);
   const cashSummary = useTradingStore((s) => s.cashSummary);
-  const auditReport = useTradingStore((s) => s.auditReport);
   const feedStatus = useTradingStore((s) => s.feedStatus);
   const setFeedStatus = useTradingStore((s) => s.setFeedStatus);
   const setAuditReport = useTradingStore((s) => s.setAuditReport);
@@ -36,7 +38,6 @@ export function TopHeader() {
       const res = await api.setFeedMode(nextMode);
       setFeedStatus(res);
     } catch {
-      // Toggle locally if backend offline
       setFeedStatus({
         mode: nextMode,
         is_live: nextMode === "LIVE",
@@ -75,111 +76,118 @@ export function TopHeader() {
   const isLive = feedStatus?.mode === "LIVE";
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
-      {/* Symbol Selection Tabs */}
+    <header className="h-14 bg-white dark:bg-[#121215] border-b border-slate-200/60 dark:border-zinc-800/80 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
+      {/* Left Toolbar Controls */}
       <div className="flex items-center gap-3">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          Market:
-        </span>
-        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-          {SYMBOLS.map((sym) => (
-            <button
-              key={sym}
-              onClick={() => setSelectedSymbol(sym)}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                selectedSymbol === sym
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              {sym}
-            </button>
-          ))}
-        </div>
+        {/* Symbol Dropdown */}
+        <CrmDropdown
+          prefix="Market:"
+          value={selectedSymbol}
+          options={SYMBOL_OPTIONS}
+          onChange={(val) => setSelectedSymbol(val)}
+        />
 
-        {/* Demo Mode Toggle Switch */}
-        <div className="ml-4 flex items-center gap-2 border-l pl-4 border-slate-200">
-          <span className="text-xs font-medium text-slate-500">Feed Mode:</span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isTogglingFeed}
-            onClick={handleToggleFeed}
-            className={`h-7 px-2.5 text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-              isLive
-                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+        {/* Feed Mode Pill Button */}
+        <button
+          type="button"
+          disabled={isTogglingFeed}
+          onClick={handleToggleFeed}
+          style={CONTROL_SHADOW_STYLE}
+          className={`h-8 px-3.5 rounded-full border border-slate-200/80 dark:border-transparent text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 transition-all select-none ${
+            isLive
+              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/70"
+              : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70"
+          }`}
+        >
+          <Radio
+            className={`w-3.5 h-3.5 ${
+              isLive ? "animate-pulse text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
             }`}
-          >
-            <Radio className={`w-3.5 h-3.5 ${isLive ? "animate-pulse text-emerald-600" : "text-amber-600"}`} />
-            {isLive ? "LIVE NSE" : "OFFLINE REPLAY"}
-          </Button>
-        </div>
+          />
+          <span className="text-slate-400 dark:text-zinc-500 font-normal">Feed:</span>
+          <span className="font-semibold">{isLive ? "LIVE NSE" : "OFFLINE REPLAY"}</span>
+        </button>
       </div>
 
-      {/* Account Health & Engine Audit */}
-      <div className="flex items-center gap-6">
-        {/* Account Cash & MTM */}
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="text-right">
-            <div className="text-[10px] text-slate-400 font-sans uppercase font-medium">
-              Available Cash
-            </div>
-            <div className="font-semibold text-slate-900">
+      {/* Right Toolbar: Account Metrics & System Integrity */}
+      <div className="flex items-center gap-4">
+        {/* Cash & PnL Pills with CONTROL_SHADOW_STYLE */}
+        <div className="hidden sm:flex items-center gap-2">
+          {/* Available Cash Pill */}
+          <div
+            style={CONTROL_SHADOW_STYLE}
+            className="h-8 px-3 rounded-full border border-slate-200/80 dark:border-transparent bg-white dark:bg-[#1c1c1f] flex items-center gap-2 text-xs font-mono"
+          >
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-sans uppercase font-medium">
+              Cash
+            </span>
+            <span className="font-bold text-slate-900 dark:text-white">
               {formatRupee(cashSummary.available_cash)}
-            </div>
+            </span>
           </div>
 
-          <div className="h-6 w-px bg-slate-200" />
-
-          <div className="text-right">
-            <div className="text-[10px] text-slate-400 font-sans uppercase font-medium">
-              Realized P&amp;L
-            </div>
-            <div
-              className={`font-semibold ${
-                cashSummary.realized_pnl >= 0 ? "text-emerald-600" : "text-rose-600"
+          {/* Realized PnL Pill */}
+          <div
+            style={CONTROL_SHADOW_STYLE}
+            className="h-8 px-3 rounded-full border border-slate-200/80 dark:border-transparent bg-white dark:bg-[#1c1c1f] flex items-center gap-2 text-xs font-mono"
+          >
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-sans uppercase font-medium">
+              Realized
+            </span>
+            <span
+              className={`font-bold ${
+                cashSummary.realized_pnl >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
               }`}
             >
               {formatRupee(cashSummary.realized_pnl)}
-            </div>
+            </span>
           </div>
         </div>
 
-        {/* Zero-Discrepancy Audit Badge */}
-        <Badge
-          variant="outline"
-          className="h-7 px-2.5 bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs flex items-center gap-1.5 font-medium"
+        {/* Zero Discrepancy Verified Pill */}
+        <div
+          style={CONTROL_SHADOW_STYLE}
+          className="h-8 px-3 rounded-full border border-slate-200/80 dark:border-transparent bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-mono flex items-center gap-1.5 font-medium"
         >
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-          <span>₹0.00 Discrepancy</span>
-        </Badge>
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span className="hidden md:inline">₹0.00 Discrepancy</span>
+          <span className="md:hidden">₹0 Disc</span>
+        </div>
 
         {/* Cold Crash Recovery Button */}
-        <Button
-          size="sm"
-          variant="outline"
+        <button
+          type="button"
           disabled={isReplaying}
           onClick={handleCrashReplay}
-          className="h-7 px-2.5 text-xs text-slate-700 hover:text-slate-900 flex items-center gap-1.5"
+          style={CONTROL_SHADOW_STYLE}
+          className="h-8 px-3 rounded-full border border-slate-200/80 dark:border-transparent bg-white dark:bg-[#1c1c1f] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 transition-all select-none hover:bg-slate-50 dark:hover:bg-[#232327]"
         >
-          <RotateCcw className={`w-3.5 h-3.5 ${isReplaying ? "animate-spin" : ""}`} />
-          <span>Crash Replay</span>
-        </Button>
+          <RotateCcw
+            className={`w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 ${
+              isReplaying ? "animate-spin" : ""
+            }`}
+          />
+          <span className="hidden sm:inline">Crash Replay</span>
+        </button>
 
-        {/* WebSocket Connection Status */}
-        <div className="flex items-center gap-1.5 text-xs font-medium pl-2 border-l border-slate-200">
+        {/* WebSocket Stream Indicator */}
+        <div
+          style={CONTROL_SHADOW_STYLE}
+          className="h-8 px-2.5 rounded-full border border-slate-200/80 dark:border-transparent bg-white dark:bg-[#1c1c1f] flex items-center gap-1.5 text-xs font-mono"
+        >
           {wsConnected ? (
-            <span className="flex items-center gap-1.5 text-emerald-600">
+            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               <Wifi className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-mono">STREAM</span>
+              <span className="text-[10px] font-bold">STREAM</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-slate-300" />
+            <span className="flex items-center gap-1.5 text-slate-400 dark:text-zinc-500">
+              <span className="w-2 h-2 rounded-full bg-slate-400" />
               <WifiOff className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-mono">CONNECTING</span>
+              <span className="text-[10px]">OFFLINE</span>
             </span>
           )}
         </div>
